@@ -12,8 +12,8 @@ pip install numpy h5py progress
 2. Clone relevant repositories
 ```
 cd /path/to/parent_dir
-git clone https://github.com/jackd/dids
-git clone https://github.com/jackd/util3d
+git clone https://github.com/jackd/dids.git
+git clone https://github.com/jackd/util3d.git
 git clone https://github.com/jackd/shapenet.git
 ```
 3. Add parent directory to `PYTHONPATH`
