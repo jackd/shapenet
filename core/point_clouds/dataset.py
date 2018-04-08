@@ -37,6 +37,10 @@ class PointCloudAutoSavingManager(Hdf5AutoSavingManager):
         if self._example_ids is not None:
             mesh_dataset = mesh_dataset.subset(self._example_ids)
 
+        with mesh_dataset:
+            keys = [k for k, v in mesh_dataset.items() if len(v['faces']) > 0]
+        mesh_dataset = mesh_dataset.subset(keys)
+
         return mesh_dataset.map(map_fn)
 
 
