@@ -24,7 +24,7 @@ from path import get_example_ids
 # }
 
 _cat_descs = {
-    '02691156': 'airplane',  '02773838': 'bag',        '02801938': 'basket',
+    '02691156': 'plane',     '02773838': 'bag',        '02801938': 'basket',
     '02808440': 'bathtub',   '02818832': 'bed',        '02828884': 'bench',
     '02834778': 'bicycle',   '02843684': 'birdhouse',  '02871439': 'bookshelf',
     '02876657': 'bottle',    '02880940': 'bowl',       '02924116': 'bus',
@@ -41,7 +41,7 @@ _cat_descs = {
     '03928116': 'piano',     '03938244': 'pillow',     '03948459': 'pistol',
     '03991062': 'pot',       '04004475': 'printer',    '04074963': 'remote_control',
     '04090263': 'rifle',     '04099429': 'rocket',     '04225987': 'skateboard',
-    '04256520': 'sofa',      '04330267': 'stove',      '04530566': 'vessel',
+    '04256520': 'sofa',      '04330267': 'stove',      '04530566': 'watercraft',
     '04554684': 'washer',    '02858304': 'boat',       '02992529': 'cellphone'
 }
 

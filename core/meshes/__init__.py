@@ -28,8 +28,21 @@ class _MeshAutoSavingManager(dh.Hdf5AutoSavingManager):
         return get_obj_file_dataset(self.cat_id).map(map_fn)
 
 
+def remove_empty_meshes(cat_id):
+    from shapenet.core.meshes import get_mesh_dataset
+    to_remove = []
+    with get_mesh_dataset(cat_id, mode='a') as ds:
+        for example_id, mesh in ds.items():
+            if len(mesh['faces']) == 0:
+                to_remove.append(example_id)
+        for t in to_remove:
+            del ds[t]
+    return to_remove
+
+
 def generate_mesh_data(cat_id, overwrite=False):
     _MeshAutoSavingManager(cat_id).save_all(overwrite=overwrite)
+    remove_empty_meshes(cat_id)
 
 
 def get_mesh_dataset(cat_id, mode='r'):
