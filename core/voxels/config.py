@@ -88,16 +88,15 @@ class VoxelConfig(object):
                     tmp_dir, get_example_subdir(cat_id, example_id))
                 try:
                     obj_to_binvox(obj_path, binvox_path, **kwargs)
-                except Exception:
-                    shutil.rmtree(extraction_dir)
-                    raise
+                except IOError:
+                    print('Error generating %s/%s' % (cat_id, example_id))
                 shutil.rmtree(extraction_dir)
             bar.finish()
 
     def create_zip_file(self, cat_id, example_ids=None, overwrite=False):
-        from shapenet.core import get_example_ids
         if example_ids is None or len(example_ids) == 0:
-            example_ids = get_example_ids(cat_id)
+            path = self.get_binvox_path(cat_id, None)
+            example_ids = (e[:-7] for e in os.listdir(path))
         with zipfile.ZipFile(self.get_zip_path(cat_id), 'a') as zf:
             if not overwrite:
                 namelist = set(zf.namelist())
