@@ -34,4 +34,4 @@ if __name__ == '__main__':
                   (cat, i, len(cat_descs)))
             create_point_clouds(cat_desc=cat, **kwargs)
     else:
-        create_point_clouds(cat_desc=cat, **kwargs)
+        create_point_clouds(cat_desc=args.cat, **kwargs)
