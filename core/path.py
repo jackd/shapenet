@@ -29,6 +29,11 @@ def get_zip_path(cat_id):
     return os.path.join(get_core_dir(), '%s.zip' % cat_id)
 
 
+def get_test_train_split_path():
+    return os.path.join(
+        os.path.realpath(os.path.dirname(__file__)), 'split.csv')
+
+
 def get_zip_file(cat_id):
     return zipfile.ZipFile(get_zip_path(cat_id))
 
