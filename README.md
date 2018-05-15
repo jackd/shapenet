@@ -7,7 +7,7 @@ Dependencies:
 # Setup
 1. Install pip dependencies
 ```
-pip install numpy h5py progress
+pip install numpy h5py progress wget
 ```
 2. Clone relevant repositories
 ```
