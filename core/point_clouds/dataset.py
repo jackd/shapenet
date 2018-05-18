@@ -108,9 +108,12 @@ class CloudNormalAutoSavingManager(Hdf5AutoSavingManager):
         return mesh_dataset.map(map_fn)
 
 
-def get_cloud_normal_dataset(cat_id, n_samples, example_ids=None):
+def get_cloud_normal_dataset(cat_id, n_samples, example_ids=None, mode='r'):
     manager = CloudNormalAutoSavingManager(cat_id, n_samples, example_ids)
     if not os.path.isfile(manager.path):
-        return manager.get_saved_dataset()
+        dataset = manager.get_saved_dataset(mode=mode)
     else:
-        return manager.get_saving_dataset()
+        dataset = manager.get_saving_dataset(mode=mode)
+    if example_ids is not None:
+        dataset = dataset.subset(example_ids)
+    return dataset
