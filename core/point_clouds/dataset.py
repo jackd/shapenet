@@ -44,12 +44,28 @@ class PointCloudAutoSavingManager(Hdf5AutoSavingManager):
         return mesh_dataset.map(map_fn)
 
 
-def get_point_cloud_dataset(cat_id, n_samples, example_ids=None):
+def get_point_cloud_dataset(cat_id, n_samples, example_ids=None, mode='r'):
+    """
+    Get a dataset with point cloud data.
+
+    Args:
+        `cat_id`: category id
+        `n_samples`: number of points in each cloud
+        `example_ids`: If specified, only create data for these examples,
+            and return a dataset with only these ids exposed as keys.
+            Defaults to all examples in the category.
+        `mode`: mode to open the file in. If `a`, data can be deleted or saved.
+    """
     manager = PointCloudAutoSavingManager(cat_id, n_samples, example_ids)
     if not os.path.isfile(manager.path):
-        return manager.get_saved_dataset()
+        dataset = manager.get_saved_dataset()
     else:
-        return manager.get_saving_dataset()
+        if mode not in ('a', 'r'):
+            raise NotImplementedError('mode must be in ("a", "r")')
+        dataset = manager.get_saving_dataset(mode=mode)
+    if example_ids is not None:
+        dataset = dataset.subset(example_ids)
+    return dataset
 
 
 class CloudNormalAutoSavingManager(Hdf5AutoSavingManager):
