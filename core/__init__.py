@@ -98,7 +98,6 @@ def to_cat_id(cat):
         raise ValueError('cat %s is not a valid id or descriptor' % cat)
 
 
-
 __all__ = [
     path,
     get_cat_ids,
