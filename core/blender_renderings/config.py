@@ -78,10 +78,15 @@ class RenderConfig(object):
     def get_example_depth_subpath(self, cat_id, example_id, view_angle):
         return path.get_example_depth_subpath(cat_id, example_id, view_angle)
 
-    def get_multi_view_dataset(self, cat_id, example_ids=None, mode='r'):
+    def get_multi_view_dataset(
+                self, cat_id, view_indices=None, example_ids=None, mode='r'):
         from shapenet.image import load_image_from_file
         from dids.file_io.zip_file_dataset import ZipFileDataset
-        view_angles = [self.view_angle(i) for i in range(self.n_images)]
+        if view_indices is None:
+            view_indices = range(self.n_images)
+            view_angles = [self.view_angle(i) for i in view_indices]
+        else:
+            view_angles = {i: self.view_angle(i) for i in view_indices}
 
         def key_fn(key):
             example_id, view_index = key
@@ -94,9 +99,8 @@ class RenderConfig(object):
         dataset = dataset.map_keys(key_fn)
         if example_ids is not None:
             keys = []
-            n = self.n_images
             for example_id in example_ids:
-                keys.extend((example_id, k) for k in range(n))
+                keys.extend((example_id, k) for k in view_indices)
             dataset = dataset.subset(keys)
         return dataset
 
