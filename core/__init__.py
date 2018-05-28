@@ -73,11 +73,17 @@ def get_test_train_split():
 
 
 def cat_id_to_desc(cat_id):
-    return _cat_descs[cat_id]
+    if isinstance(cat_id, (list, tuple)):
+        return tuple(_cat_descs[c] for c in cat_id)
+    else:
+        return _cat_descs[cat_id]
 
 
 def cat_desc_to_id(cat_desc):
-    return _cat_ids[cat_desc]
+    if isinstance(cat_desc, (list, tuple)):
+        return tuple(_cat_ids[c] for c in cat_desc)
+    else:
+        return _cat_ids[cat_desc]
 
 
 def to_cat_desc(cat):
