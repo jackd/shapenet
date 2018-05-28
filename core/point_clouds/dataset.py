@@ -44,7 +44,7 @@ class PointCloudAutoSavingManager(Hdf5AutoSavingManager):
         return mesh_dataset.map(map_fn)
 
 
-def get_point_cloud_dataset(cat_id, n_samples, example_ids=None, mode='r'):
+def _get_point_cloud_dataset(cat_id, n_samples, example_ids=None, mode='r'):
     """
     Get a dataset with point cloud data.
 
@@ -66,6 +66,20 @@ def get_point_cloud_dataset(cat_id, n_samples, example_ids=None, mode='r'):
     if example_ids is not None:
         dataset = dataset.subset(example_ids)
     return dataset
+
+
+def get_point_cloud_dataset(cat_id, n_samples, example_ids=None, mode='r'):
+    from dids.core import BiKeyDataset
+    if not isinstance(cat_id, (tuple, list)):
+        cat_id = [cat_id]
+        example_ids = [example_ids]
+    else:
+        if example_ids is None:
+            example_ids = [None for _ in cat_id]
+    datasets = {
+        c: _get_point_cloud_dataset(c, n_samples, e, mode)
+        for c, e in zip(cat_id, example_ids)}
+    return BiKeyDataset(datasets)
 
 
 class CloudNormalAutoSavingManager(Hdf5AutoSavingManager):
