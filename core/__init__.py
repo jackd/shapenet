@@ -1,5 +1,4 @@
 import path
-from path import get_cat_ids
 from path import get_example_ids
 
 # _cat_descs = {
@@ -44,6 +43,12 @@ _cat_descs = {
     '04256520': 'sofa',      '04330267': 'stove',      '04530566': 'watercraft',
     '04554684': 'washer',    '02858304': 'boat',       '02992529': 'cellphone'
 }
+
+
+def get_cat_ids():
+    cat_ids = list(_cat_descs.keys())
+    cat_ids.sort()
+    return tuple(cat_ids)
 
 
 _cat_ids = {v: k for k, v in _cat_descs.items()}
