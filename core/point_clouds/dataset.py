@@ -122,7 +122,7 @@ class CloudNormalAutoSavingManager(Hdf5AutoSavingManager):
         return mesh_dataset.map(map_fn)
 
 
-def get_cloud_normal_dataset(cat_id, n_samples, example_ids=None, mode='r'):
+def _get_cloud_normal_dataset(cat_id, n_samples, example_ids=None, mode='r'):
     manager = CloudNormalAutoSavingManager(cat_id, n_samples, example_ids)
     if not os.path.isfile(manager.path):
         dataset = manager.get_saved_dataset(mode=mode)
@@ -131,3 +131,17 @@ def get_cloud_normal_dataset(cat_id, n_samples, example_ids=None, mode='r'):
     if example_ids is not None:
         dataset = dataset.subset(example_ids)
     return dataset
+
+
+def get_cloud_normal_dataset(cat_id, n_samples, example_ids=None, mode='r'):
+    from dids.core import BiKeyDataset
+    if not isinstance(cat_id, (tuple, list)):
+        cat_id = [cat_id]
+        example_ids = [example_ids]
+    else:
+        if example_ids is None:
+            example_ids = [None for _ in cat_id]
+    datasets = {
+        c: _get_cloud_normal_dataset(c, n_samples, e, mode)
+        for c, e in zip(cat_id, example_ids)}
+    return BiKeyDataset(datasets)
