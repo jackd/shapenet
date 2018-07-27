@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from dids.file_io.hdf5 import Hdf5AutoSavingManager
+from dids.core import BiKeyDataset
 
 _point_cloud_dir = os.path.realpath(os.path.dirname(__file__))
 
@@ -69,17 +70,18 @@ def _get_point_cloud_dataset(cat_id, n_samples, example_ids=None, mode='r'):
 
 
 def get_point_cloud_dataset(cat_id, n_samples, example_ids=None, mode='r'):
-    from dids.core import BiKeyDataset
-    if not isinstance(cat_id, (tuple, list)):
-        cat_id = [cat_id]
-        example_ids = [example_ids]
-    else:
+    def f(c, e):
+        return _get_point_cloud_dataset(c, n_samples, e, mode)
+
+    if isinstance(cat_id, (tuple, list)):
         if example_ids is None:
-            example_ids = [None for _ in cat_id]
-    datasets = {
-        c: _get_point_cloud_dataset(c, n_samples, e, mode)
-        for c, e in zip(cat_id, example_ids)}
-    return BiKeyDataset(datasets)
+            example_ids = tuple(None for _ in cat_id)
+        datasets = {
+            c: f(c, e)
+            for c, e in zip(cat_id, example_ids)}
+        return BiKeyDataset(datasets)
+    else:
+        return f(cat_id, example_ids)
 
 
 class CloudNormalAutoSavingManager(Hdf5AutoSavingManager):
@@ -134,7 +136,6 @@ def _get_cloud_normal_dataset(cat_id, n_samples, example_ids=None, mode='r'):
 
 
 def get_cloud_normal_dataset(cat_id, n_samples, example_ids=None, mode='r'):
-    from dids.core import BiKeyDataset
     if not isinstance(cat_id, (tuple, list)):
         cat_id = [cat_id]
         example_ids = [example_ids]
