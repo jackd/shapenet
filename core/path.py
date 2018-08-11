@@ -1,3 +1,7 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 import zipfile
 
@@ -14,11 +18,15 @@ def get_core_dir():
 
 
 def get_cat_ids():
-    ids = list(set(
-        [k[:-4] for k in os.listdir(get_core_dir()) if len(k) > 4 and
-         k[-4:] == '.zip']))
-    ids.sort()
-    return tuple(ids)
+    from . import get_cat_ids
+    print('Warning: using deprecated `get_cat_ids` in path. Use shapenet.core'
+          ' version instead.')
+    return get_cat_ids()
+    # ids = list(set(
+    #     [k[:-4] for k in os.listdir(get_core_dir()) if len(k) > 4 and
+    #      k[-4:] == '.zip']))
+    # ids.sort()
+    # return tuple(ids)
 
 
 def get_csv_path(cat_id):
