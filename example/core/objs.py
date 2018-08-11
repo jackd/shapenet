@@ -1,3 +1,7 @@
+#!/usr/bin/python
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
 from shapenet.core import cat_desc_to_id
 from shapenet.core.objs import get_obj_file_dataset

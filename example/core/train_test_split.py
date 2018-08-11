@@ -1,3 +1,8 @@
+#!/usr/bin/python
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import dids
 from shapenet.core.point_clouds import get_point_cloud_dataset
 from shapenet.core.meshes import get_mesh_dataset
