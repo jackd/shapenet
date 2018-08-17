@@ -1,26 +1,41 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 import string
-import path
 import zipfile
+from . import path
 
 
-def get_config_id(shape, n_images):
+def get_config_id(shape, n_images, scale=None):
     shape_str = string.join((str(s) for s in shape), '-')
-    return 'r%s_%d' % (shape_str, n_images)
+    id = 'r%s_%d' % (shape_str, n_images)
+    if scale is not None:
+        id = '%s_s%03d' % (id, int(100*scale))
+    return id
 
 
 def parse_config_id(config_id):
-    shape_str, n_images = config_id[1:].split('_')
+    substrs = config_id[1:].split('_')
+    if len(substrs) == 2:
+        shape_str, n_images = substrs
+        scale = None
+    else:
+        shape_str, n_images = substrs[:2]
+        scale = int(substrs[2][1:]) / 100
     n_images = int(n_images)
     shape = tuple(int(s) for s in shape_str.split('-'))
-    return dict(shape=shape, n_images=n_images)
+    return dict(shape=shape, n_images=n_images, scale=scale)
 
 
 class RenderConfig(object):
-    def __init__(self, shape=(192, 256), n_images=8, config_id=None):
+    def __init__(
+            self, shape=(192, 256), n_images=8, scale=None, config_id=None):
         self._shape = shape
         self._n_images = n_images
-        self._id = get_config_id(shape, n_images) if config_id is None \
+        self._scale = scale
+        self._id = get_config_id(shape, n_images, scale) if config_id is None \
             else config_id
 
     @staticmethod
@@ -31,6 +46,10 @@ class RenderConfig(object):
     @property
     def config_id(self):
         return self._id
+
+    @property
+    def scale(self):
+        return self._scale
 
     @property
     def shape(self):

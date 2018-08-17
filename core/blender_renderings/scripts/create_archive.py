@@ -1,3 +1,4 @@
+#!/usr/bin/python
 """Creates or adds to an archive of renderings."""
 
 

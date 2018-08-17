@@ -1,5 +1,5 @@
+#!/usr/bin/python
 """Create uncompressed renderings."""
-
 import os
 import shutil
 import subprocess
@@ -24,6 +24,7 @@ def render_obj(
         '--python', script_path, '--',
         '--views', str(config.n_images),
         '--shape', str(config.shape[0]), str(config.shape[1]),
+        '--scale', '1' if config.scale is None else str(config.scale),
         '--output_folder', output_dir,
         '--remove_doubles',
         '--edge_split',
@@ -92,6 +93,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('cat', type=str)
     parser.add_argument('--shape', type=int, nargs=2, default=[192, 256])
+    parser.add_argument('--scale', type=float, default=None)
     parser.add_argument('--blender_path', type=str, default='blender')
     parser.add_argument('-n', '--n_images', type=int, default=8)
     parser.add_argument('-d', '--debug', action='store_true')
@@ -100,7 +102,7 @@ if __name__ == '__main__':
     parser.add_argument('-i', '--example_ids', nargs='*')
     parser.add_argument('-f', '--fixed_meshes', action='store_true')
     args = parser.parse_args()
-    config = RenderConfig(args.shape, args.n_images)
+    config = RenderConfig(args.shape, args.n_images, args.scale)
     cat_id = cat_id = cat_desc_to_id(args.cat)
     render_cat(config, cat_id, args.overwrite, args.reverse, args.debug,
                args.example_ids, args.fixed_meshes, args.blender_path)
