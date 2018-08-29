@@ -18,13 +18,14 @@ def render_obj(
         config, obj_path, output_dir, call_kwargs, blender_path='blender'):
     script_path = os.path.join(
         os.path.realpath(os.path.dirname(__file__)), 'blender_render.py')
+    scale_str = '1' if config.scale is None else str(config.scale)
     subprocess.call([
         blender_path,
         '--background',
         '--python', script_path, '--',
         '--views', str(config.n_images),
         '--shape', str(config.shape[0]), str(config.shape[1]),
-        '--scale', '1' if config.scale is None else str(config.scale),
+        '--scale', scale_str,
         '--output_folder', output_dir,
         '--remove_doubles',
         '--edge_split',
@@ -34,7 +35,7 @@ def render_obj(
 
 def render_example(
         config, cat_id, example_id, zip_file, overwrite, call_kwargs,
-        blender_path='blender'):
+        blender_path='blender', verbose=False):
     subdir = get_example_subdir(cat_id, example_id)
     cat_dir = config.get_cat_dir(cat_id)
     example_dir = config.get_example_dir(cat_id, example_id)
@@ -54,9 +55,10 @@ def render_example(
                 zip_file.extract(f, tmp)
         subpath = get_obj_subpath(cat_id, example_id)
         obj_path = os.path.join(tmp, subpath)
-        print('')
-        print(datetime.now())
-        print('Rendering %s' % example_id)
+        if verbose:
+            print('')
+            print(datetime.now())
+            print('Rendering %s' % example_id)
         render_obj(
             config, obj_path, cat_dir, call_kwargs, blender_path=blender_path)
         return True
@@ -64,7 +66,8 @@ def render_example(
 
 def render_cat(
         config, cat_id, overwrite, reverse=False, debug=False,
-        example_ids=None, use_fixed_meshes=False, blender_path='blender'):
+        example_ids=None, use_fixed_meshes=False, blender_path='blender',
+        verbose=False):
     import zipfile
     from progress.bar import IncrementalBar
     call_kwargs = {} if debug else dict(
@@ -84,7 +87,8 @@ def render_cat(
             bar.next()
             render_example(
                 config, cat_id, example_id, zip_file,
-                overwrite, call_kwargs, blender_path=blender_path)
+                overwrite, call_kwargs, blender_path=blender_path,
+                verbose=verbose)
     bar.finish()
 
 
@@ -101,8 +105,10 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--overwrite', action='store_true')
     parser.add_argument('-i', '--example_ids', nargs='*')
     parser.add_argument('-f', '--fixed_meshes', action='store_true')
+    parser.add_argument('-v', '--verbose', action='store_true')
     args = parser.parse_args()
     config = RenderConfig(args.shape, args.n_images, args.scale)
     cat_id = cat_id = cat_desc_to_id(args.cat)
     render_cat(config, cat_id, args.overwrite, args.reverse, args.debug,
-               args.example_ids, args.fixed_meshes, args.blender_path)
+               args.example_ids, args.fixed_meshes, args.blender_path,
+               args.verbose)

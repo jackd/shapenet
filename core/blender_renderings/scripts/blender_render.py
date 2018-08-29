@@ -84,12 +84,15 @@ def main(
     bpy.ops.object.delete()
 
     bpy.ops.import_scene.obj(filepath=obj)
+
+    if scale != 1:
+        bpy.ops.transform.resize(value=(scale, scale, scale))
+
     for object in bpy.context.scene.objects:
         if object.name in ['Camera', 'Lamp']:
             continue
         bpy.context.scene.objects.active = object
         if scale != 1:
-            bpy.ops.transform.resize(value=(scale, scale, scale))
             bpy.ops.object.transform_apply(scale=True)
         if remove_doubles:
             bpy.ops.object.mode_set(mode='EDIT')
