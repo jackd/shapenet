@@ -33,9 +33,22 @@ def render_obj(
         ], **call_kwargs)
 
 
+def get_file_index(zf):
+    ret = {}
+    for f in zf.namelist():
+        key = f.split('/')
+        if len(key) > 2:
+            ret.setdefault('/'.join(key[:2]), []).append(f)
+    return ret
+
+
 def render_example(
         config, cat_id, example_id, zip_file, overwrite, call_kwargs,
-        blender_path='blender', verbose=False):
+        blender_path='blender', verbose=False, file_index=None):
+    if file_index is None:
+        print('Warning: computing file_index in render_example. '
+              'Highly inefficient if rendering multiple examples')
+        file_index = get_file_index(zip_file)
     subdir = get_example_subdir(cat_id, example_id)
     cat_dir = config.get_cat_dir(cat_id)
     example_dir = config.get_example_dir(cat_id, example_id)
@@ -49,10 +62,16 @@ def render_example(
     if not os.path.isdir(cat_dir):
         os.makedirs(cat_dir)
 
+    paths = file_index.get(subdir)
+    if paths is None:
+        return False
+
     with get_temp_dir() as tmp:
-        for f in zip_file.namelist():
-            if f.startswith(subdir):
-                zip_file.extract(f, tmp)
+        for f in paths:
+            zip_file.extract(f, tmp)
+        # for f in zip_file.namelist():
+        #     if f.startswith(subdir):
+        #         zip_file.extract(f, tmp)
         subpath = get_obj_subpath(cat_id, example_id)
         obj_path = os.path.join(tmp, subpath)
         if verbose:
@@ -83,12 +102,13 @@ def render_cat(
     else:
         zip_path = get_zip_path(cat_id)
     with zipfile.ZipFile(zip_path) as zip_file:
+        file_index = get_file_index(zip_file)
         for example_id in example_ids:
             bar.next()
             render_example(
                 config, cat_id, example_id, zip_file,
                 overwrite, call_kwargs, blender_path=blender_path,
-                verbose=verbose)
+                verbose=verbose, file_index=file_index)
     bar.finish()
 
 
