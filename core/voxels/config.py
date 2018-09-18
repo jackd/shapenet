@@ -36,7 +36,8 @@ class VoxelConfig(object):
         return path.get_binvox_subpath(cat_id, example_id)
 
     def get_binvox_path(self, cat_id, example_id):
-        return path.get_binvox_path(self.voxel_id, cat_id, example_id)
+        return os.path.join(
+            self.root_dir, self.get_binvox_subpath(cat_id, example_id))
 
     @property
     def root_dir(self):
@@ -107,7 +108,7 @@ class VoxelConfig(object):
                 src = self.get_binvox_path(cat_id, example_id)
                 zf.write(src, dst)
 
-    def get_dataset(self, cat_id, mode='r'):
+    def _get_dataset(self, cat_id, mode='r'):
         from dids.file_io.zip_file_dataset import ZipFileDataset
         from util3d.voxel.binvox import Voxels
 
@@ -122,26 +123,15 @@ class VoxelConfig(object):
                     return fn[:-7]
             return None
 
-        path = self.get_zip_path(cat_id)
-        if not os.path.isfile(path):
-            self.create_voxel_data(cat_id)
-            self.create_zip_file(cat_id)
-        assert(os.path.isfile(path))
         dataset = ZipFileDataset(self.get_zip_path(cat_id), mode)
         dataset = dataset.map(Voxels.from_file)
         dataset = dataset.map_keys(key_fn, inverse_key_fn)
         return dataset
 
-
-# if __name__ == '__main__':
-#     from shapenet.core import cat_desc_to_id
-#     from util3d.mayavi_vis import vis_voxels
-#     from mayavi import mlab
-#     cat_desc = 'plane'
-#     cat_id = cat_desc_to_id(cat_desc)
-#     config = VoxelConfig()
-#     with VoxelConfig().get_dataset(cat_id) as ds:
-#         for k, v in ds.items():
-#             print(k)
-#             vis_voxels(v.data, color=(0, 0, 1))
-#             mlab.show()
+    def get_dataset(self, cat_id, mode='r'):
+        path = self.get_zip_path(cat_id)
+        if not os.path.isfile(path):
+            self.create_voxel_data(cat_id)
+            self.create_zip_file(cat_id)
+        assert(os.path.isfile(path))
+        return self._get_dataset(cat_id, mode)

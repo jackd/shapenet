@@ -11,7 +11,7 @@ from . import path
 def get_config_id(shape, n_images, scale=None):
     shape_str = string.join((str(s) for s in shape), '-')
     id = 'r%s_%d' % (shape_str, n_images)
-    if scale is not None:
+    if scale is not None and scale != 1:
         id = '%s_s%03d' % (id, int(100*scale))
     return id
 

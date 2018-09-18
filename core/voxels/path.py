@@ -45,14 +45,13 @@ def get_binvox_subpath(cat_id, example_id=None):
     return os.path.join(cat_id, '%s.binvox' % example_id)
 
 
-def get_binvox_path(voxel_id, cat_id, example_id=None):
-    return os.path.join(
-        data_dir, voxel_id, get_binvox_subpath(cat_id, example_id))
-
-
 def get_binvox_dir(voxel_id):
     return os.path.join(data_dir, voxel_id)
 
 
-def has_binvox_data(voxel_id, cat_id, example_id=None):
-    return os.path.exists(get_binvox_path(voxel_id, cat_id, example_id))
+def get_rotated_binvox_dir(voxel_id):
+    return os.path.join(data_dir, 'rotated', voxel_id)
+
+
+# def has_binvox_data(voxel_id, cat_id, example_id=None):
+#     return os.path.exists(get_binvox_path(voxel_id, cat_id, example_id))
