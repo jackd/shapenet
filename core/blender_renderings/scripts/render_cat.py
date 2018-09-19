@@ -53,8 +53,11 @@ def render_example(
     cat_dir = config.get_cat_dir(cat_id)
     example_dir = config.get_example_dir(cat_id, example_id)
     if not overwrite:
-        if os.path.isdir(example_dir) and \
-                len(os.listdir(example_dir)) == 4*config.n_images:
+        # some versions of blender create 4 files per image?
+        # standard is a .png for each or image, normal, albedo
+        if (os.path.isdir(example_dir) and
+                len(os.listdir(example_dir)) in (
+                3*config.n_images, 4*config.n_images)):
             return False
     else:
         if os.path.isdir(example_dir):

@@ -45,14 +45,29 @@ def look_at(eye, center, world_up):
     return transform
 
 
-def get_frstrum_grid_world_coords(
-        fx, fy, near_clip, far_clip, eye_z, theta, shape, linear_z_world=True,
+def get_frustrum_view_coordinates(
+        shape, fx, fy, near_clip, far_clip, linear_z_world=True,
         dtype=np.float32):
-    """Get frustrum grid points in world coordinates."""
+    nx, ny, nz = shape
+    # x = (2*(np.array(tuple(range(nx)), dtype=dtype) + 0.5) / nx - 1) / fx
+    # y = (2*(np.array(tuple(range(ny)), dtype=dtype) + 0.5) / ny - 1) / fy
+    # z = (np.array(tuple(range(ny)), dtype=dtype) + 0.5) / nz
+    # z *= (far_clip - near_clip)
+    # z += near_clip
+    # z *= -1
+    #
+    # x *= -1  # because hax?
+    #
+    # X, Y = np.meshgrid(x, y, indexing='ij')
+    # X = np.expand_dims(X, axis=-1)
+    # Y = np.expand_dims(Y, axis=-1)
+    # Z = np.expand_dims(np.expand_dims(z, 0), 0)
+    # X = X*Z
+    # Y = Y*Z
+    # Z = np.tile(Z, (nx, ny, 1))
+    # xyzh = np.stack((X, Y, Z, np.ones_like(X)), axis=-1)
 
     frustrum_transform = get_frustrum_transform(fx, fy, near_clip, far_clip)
-
-    nx, ny, nz = shape
     x = 2*(np.array(tuple(range(nx)), dtype=dtype) + 0.5) / nx - 1
     y = 2*(np.array(tuple(range(ny)), dtype=dtype) + 0.5) / ny - 1
     y *= -1  # fixes left/right coordinate frame issues?
@@ -69,20 +84,89 @@ def get_frstrum_grid_world_coords(
     else:
         z = 2*(np.array(tuple(range(ny)), dtype=dtype) + 0.5) / nz - 1
     X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
-    xyzh = np.stack([X, Y, Z, np.ones((nx, ny, nz), dtype=dtype)], axis=-1)
+    xyzh = np.stack([X, Y, Z, np.ones((nx, ny, nz), dtype=dtype)], axis=0)
+    xyzh = np.reshape(xyzh, (4, -1))
+    xyzh = np.linalg.solve(frustrum_transform, xyzh)
 
+    return xyzh
+
+
+# def vis(xyz):
+#     from mayavi import mlab
+#     from sdf_renderer.vis import vis_axes
+#     from util3d.mayavi_vis import vis_point_cloud
+#     vis_point_cloud(xyz, scale_factor=0.2)
+#     vis_axes()
+#     mlab.show()
+#     exit()
+
+
+def dehomogenize(xyzh):
+    if xyzh.shape[0] != 4:
+        raise ValueError(
+            'xyzh must have leading dimension 4, got %d' % xyzh.shape[0])
+    return xyzh[:3] / xyzh[3:]
+
+
+def get_world_to_view_transform(eye_z, theta, dtype=np.float32):
     k = np.array([0, 0, 1], dtype=dtype)
     eye = np.array([-np.sin(theta), np.cos(theta), eye_z], dtype=dtype)
     center = np.array([0, 0, 0], dtype=dtype)
-    view_transform = look_at(eye, center, k)
-    combined_transform = np.matmul(frustrum_transform, view_transform)
+    return look_at(eye, center, k)
 
-    xyzh = np.reshape(xyzh, (-1, 4))
-    xyzh_world = np.linalg.solve(combined_transform, xyzh.T).T
-    xyzh_world = np.reshape(xyzh_world, (nx, ny, nz, 4))
-    xyz_world = xyzh_world[..., :3] / xyzh_world[..., 3:]
 
-    return xyz_world
+def get_frstrum_grid_world_coords(
+        shape, fx, fy, near_clip, far_clip, eye_z, theta, linear_z_world=True,
+        dtype=np.float32):
+    shape = tuple(shape)
+    xyzh = get_frustrum_view_coordinates(
+            shape, fx, fy, near_clip, far_clip, linear_z_world=linear_z_world,
+            dtype=dtype)
+
+    view_transform = get_world_to_view_transform(eye_z, theta, dtype)
+
+    xyzh = np.linalg.solve(view_transform, xyzh)
+    return xyzh
+
+
+# def get_frstrum_grid_world_coords(
+#         shape, fx, fy, near_clip, far_clip, eye_z, theta,
+#         linear_z_world=True, dtype=np.float32):
+#     """Get frustrum grid points in world coordinates."""
+#
+#     frustrum_transform = get_frustrum_transform(fx, fy, near_clip, far_clip)
+#
+#     nx, ny, nz = shape
+#     x = 2*(np.array(tuple(range(nx)), dtype=dtype) + 0.5) / nx - 1
+#     y = 2*(np.array(tuple(range(ny)), dtype=dtype) + 0.5) / ny - 1
+#     y *= -1  # fixes left/right coordinate frame issues?
+#     if linear_z_world:
+#         ze = (np.array(tuple(range(ny)), dtype=dtype) + 0.5) / nz
+#         ze *= (far_clip - near_clip)
+#         ze += near_clip
+#         ze *= -1
+#         zero = np.zeros_like(ze)
+#         one = np.ones_like(ze)
+#         zeht = np.stack([zero, zero, ze, one], axis=0)
+#         zh = np.matmul(frustrum_transform, zeht).T
+#         z = zh[..., 2] / zh[..., 3]
+#     else:
+#         z = 2*(np.array(tuple(range(ny)), dtype=dtype) + 0.5) / nz - 1
+#     X, Y, Z = np.meshgrid(x, y, z, indexing='ij')
+#     xyzh = np.stack([X, Y, Z, np.ones((nx, ny, nz), dtype=dtype)], axis=-1)
+#
+#     k = np.array([0, 0, 1], dtype=dtype)
+#     eye = np.array([-np.sin(theta), np.cos(theta), eye_z], dtype=dtype)
+#     center = np.array([0, 0, 0], dtype=dtype)
+#     view_transform = look_at(eye, center, k)
+#     combined_transform = np.matmul(frustrum_transform, view_transform)
+#
+#     xyzh = np.reshape(xyzh, (-1, 4))
+#     xyzh_world = np.linalg.solve(combined_transform, xyzh.T).T
+#     xyzh_world = np.reshape(xyzh_world, (nx, ny, nz, 4))
+#     xyz_world = xyzh_world[..., :3] / xyzh_world[..., 3:]
+#
+#     return xyz_world
 
 
 class FrustrumVoxelConfig(VoxelConfig):
@@ -132,25 +216,26 @@ class FrustrumVoxelConfig(VoxelConfig):
 
     def transformer(self):
         world_coords = get_frstrum_grid_world_coords(
-                self._fx, self._fy, self._near_clip, self._far_clip,
-                self._eye_z, self._theta, self._shape,
-                linear_z_world=True)
+                 self._shape, self._fx, self._fy, self._near_clip,
+                 self._far_clip, self._eye_z, self._theta, linear_z_world=True)
+        world_coords = dehomogenize(world_coords)
+        world_coords = np.reshape(world_coords, (3,) + self._shape)
         voxel_dim = self._base_config.voxel_dim
         voxel_coords = (world_coords + 0.5) * voxel_dim
         voxel_coords = np.floor(voxel_coords).astype(np.int32)
         inside = np.all(
             np.logical_and(voxel_coords >= 0, voxel_coords < voxel_dim),
-            axis=-1)
+            axis=0)
         outside = np.logical_not(inside)
-        voxel_coords[outside] = 0
+        voxel_coords[:, outside] = 0
 
-        coords_flat = np.reshape(voxel_coords, (-1, 3))
-        i, j, k = coords_flat.T
+        coords_flat = np.reshape(voxel_coords, (3, -1))
+        i, j, k = coords_flat
         shape = self.shape
 
         def f(voxels):
-            data = voxels.gather((i, j, k))
             # data = voxels.gather((i, j, k))
+            data = voxels.gather((i, j, k))
             # data = voxels.gather((i, j, k), fix_coords=True)
             # data = voxels.dense_data()[i, j, k]
             data = np.reshape(data, shape)
@@ -170,6 +255,9 @@ class FrustrumVoxelConfig(VoxelConfig):
             for example_id in example_ids:
                 bar.next()
                 path = self.get_binvox_path(cat_id, example_id)
+                folder = os.path.dirname(path)
+                if not os.path.isdir(folder):
+                    os.makedirs(folder)
                 if os.path.isfile(path):
                     if overwrite:
                         os.remove(path)

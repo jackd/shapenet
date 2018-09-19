@@ -1,3 +1,6 @@
+#!/usr/bin/python
+
+
 def convert_multi(cat_id, example_ids, overwrite=False, **kwargs):
     from shapenet.core.voxels.config import VoxelConfig
     config = VoxelConfig(**kwargs)
