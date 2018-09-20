@@ -12,10 +12,10 @@ from shapenet.core.voxels import VoxelConfig
 from shapenet.core import cat_desc_to_id
 
 cat_desc = 'chair'
-base_config = VoxelConfig(voxel_dim=64)
+base_config = VoxelConfig(voxel_dim=128)
 render_config = RenderConfig(shape=(224, 224))
-view_index = 1
-out_shape = (32,)*3
+view_index = 0
+out_shape = (28,)*3
 
 cat_id = cat_desc_to_id(cat_desc)
 

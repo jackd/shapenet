@@ -173,6 +173,7 @@ class FrustrumVoxelConfig(VoxelConfig):
     def __init__(
             self, base_voxel_config, render_config, view_index, shape):
         self._base_config = base_voxel_config
+        self._render_config = render_config
         self._view_index = view_index
         self._theta = np.deg2rad(render_config.view_angle(view_index))
         scale = render_config.scale
@@ -209,7 +210,11 @@ class FrustrumVoxelConfig(VoxelConfig):
 
     @property
     def root_dir(self):
-        dir = os.path.join(path.data_dir, 'rotated', self.voxel_id)
+        subdir = '%s_%s_%d-%d-%d' % ((
+            self._base_config.voxel_id, self._render_config.config_id,
+            ) + self.shape)
+        dir = os.path.join(
+            path.data_dir, 'rotated', subdir, 'v%02d' % self._view_index)
         if not os.path.isdir(dir):
             os.makedirs(dir)
         return dir

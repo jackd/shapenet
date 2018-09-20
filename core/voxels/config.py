@@ -1,6 +1,10 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 import zipfile
-import path
+from . import path
 
 
 class VoxelConfig(object):
@@ -53,11 +57,9 @@ class VoxelConfig(object):
         import shutil
         from progress.bar import IncrementalBar
         from util3d.voxel.convert import obj_to_binvox
-        from shapenet.core.path import get_zip_file, get_obj_subpath, \
-            get_example_subdir
-        from shapenet.core.voxels.path import get_binvox_path
+        from .. import path as core_path
         if example_ids is None:
-            from shapenet.core import get_example_ids
+            from .. import get_example_ids
             example_ids = get_example_ids(cat_id)
         tmp_dir = '/tmp'
 
@@ -69,11 +71,12 @@ class VoxelConfig(object):
         voxel_id = self.voxel_id
 
         print('Creating voxel data.')
-        with get_zip_file(cat_id) as zf:
+        with core_path.get_zip_file(cat_id) as zf:
             bar = IncrementalBar(max=len(example_ids))
             for example_id in example_ids:
                 bar.next()
-                binvox_path = get_binvox_path(voxel_id, cat_id, example_id)
+                binvox_path = path.get_binvox_path(
+                    voxel_id, cat_id, example_id)
                 if os.path.isfile(binvox_path):
                     if overwrite:
                         os.remove(binvox_path)
@@ -82,11 +85,11 @@ class VoxelConfig(object):
                 subdir = os.path.dirname(binvox_path)
                 if not os.path.isdir(subdir):
                     os.makedirs(subdir)
-                subpath = get_obj_subpath(cat_id, example_id)
+                subpath = core_path.get_obj_subpath(cat_id, example_id)
                 zf.extract(subpath, tmp_dir)
                 obj_path = os.path.join(tmp_dir, subpath)
                 extraction_dir = os.path.join(
-                    tmp_dir, get_example_subdir(cat_id, example_id))
+                    tmp_dir, core_path.get_example_subdir(cat_id, example_id))
                 try:
                     obj_to_binvox(obj_path, binvox_path, **kwargs)
                 except IOError:
