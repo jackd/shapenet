@@ -1,13 +1,16 @@
 #!/usr/bin/python
 
 
-def convert_multi(cat_id, example_ids, overwrite=False, **kwargs):
+def convert_multi(
+        cat_id, example_ids, overwrite=False, filled=False, **kwargs):
     from shapenet.core.voxels.config import VoxelConfig
     config = VoxelConfig(**kwargs)
+    if filled:
+        config = config.filled()
     config.create_voxel_data(cat_id, example_ids, overwrite=overwrite)
 
 
-def main(cat_descs, voxel_dim, overwrite):
+def main(cat_descs, voxel_dim, overwrite, filled):
     from shapenet.core import cat_desc_to_id, get_cat_ids
     from shapenet.core import get_example_ids
     if len(cat_descs) == 0:
@@ -18,7 +21,8 @@ def main(cat_descs, voxel_dim, overwrite):
         print('Processing cat_id %s, %d / %d' % (cat_id, i+1, len(cat_ids)))
         example_ids = get_example_ids(cat_id)
         convert_multi(
-            cat_id, example_ids, overwrite=overwrite, voxel_dim=voxel_dim)
+            cat_id, example_ids, overwrite=overwrite, voxel_dim=voxel_dim,
+            filled=filled)
 
 
 if __name__ == '__main__':
@@ -27,6 +31,8 @@ if __name__ == '__main__':
     parser.add_argument('cats', nargs='*')
     parser.add_argument('-o', '--overwrite', action='store_true')
     parser.add_argument('-d', '--voxel_dim', type=int, default=32)
+    parser.add_argument('-f', '--filled', action='store_true')
 
     args = parser.parse_args()
-    main(args.cats, voxel_dim=args.voxel_dim, overwrite=args.overwrite)
+    main(args.cats, voxel_dim=args.voxel_dim, overwrite=args.overwrite,
+         filled=args.filled)

@@ -12,7 +12,7 @@ from shapenet.core.voxels.rotated import FrustrumVoxelConfig
 cat_desc = 'chair'
 base_config = VoxelConfig(voxel_dim=128)
 render_config = RenderConfig(shape=(224, 224))
-out_shape = (28,)*3
+out_shape = (56,)*3
 
 cat_id = cat_desc_to_id(cat_desc)
 

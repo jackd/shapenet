@@ -16,6 +16,10 @@ class VoxelConfig(object):
         self._voxel_id = path.get_voxel_id(
             voxel_dim, exact=exact, dc=dc, aw=aw)
 
+    def filled(self):
+        from .filled import FilledVoxelConfig
+        return FilledVoxelConfig(self)
+
     @property
     def voxel_dim(self):
         return self._voxel_dim
@@ -68,15 +72,12 @@ class VoxelConfig(object):
             exact=self.exact,
             dc=self.dc,
             aw=self.aw)
-        voxel_id = self.voxel_id
 
-        print('Creating voxel data.')
         with core_path.get_zip_file(cat_id) as zf:
             bar = IncrementalBar(max=len(example_ids))
             for example_id in example_ids:
                 bar.next()
-                binvox_path = path.get_binvox_path(
-                    voxel_id, cat_id, example_id)
+                binvox_path = self.get_binvox_path(cat_id, example_id)
                 if os.path.isfile(binvox_path):
                     if overwrite:
                         os.remove(binvox_path)
