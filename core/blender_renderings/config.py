@@ -32,7 +32,7 @@ def parse_config_id(config_id):
 class RenderConfig(object):
     def __init__(
             self, shape=(192, 256), n_images=8, scale=None, config_id=None):
-        self._shape = shape
+        self._shape = tuple(shape)
         self._n_images = n_images
         self._scale = scale
         self._id = get_config_id(shape, n_images, scale) if config_id is None \
