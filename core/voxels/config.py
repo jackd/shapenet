@@ -4,7 +4,9 @@ from __future__ import print_function
 
 import os
 import zipfile
+import numpy as np
 from . import path
+from .. import get_example_ids
 
 
 class VoxelConfig(object):
@@ -16,9 +18,9 @@ class VoxelConfig(object):
         self._voxel_id = path.get_voxel_id(
             voxel_dim, exact=exact, dc=dc, aw=aw)
 
-    def filled(self):
+    def filled(self, fill_alg=None):
         from .filled import FilledVoxelConfig
-        return FilledVoxelConfig(self)
+        return FilledVoxelConfig(self, fill_alg)
 
     @property
     def voxel_dim(self):
@@ -54,6 +56,9 @@ class VoxelConfig(object):
     def get_zip_path(self, cat_id):
         return os.path.join(self.root_dir, '%s.zip' % cat_id)
 
+    def get_hdf5_path(self, cat_id):
+        return os.path.join(self.root_dir, '%s.hdf5' % cat_id)
+
     def get_zip_file(self, cat_id, mode='r'):
         return zipfile.ZipFile(self.get_zip_path(cat_id), mode)
 
@@ -63,7 +68,6 @@ class VoxelConfig(object):
         from util3d.voxel.convert import obj_to_binvox
         from .. import path as core_path
         if example_ids is None:
-            from .. import get_example_ids
             example_ids = get_example_ids(cat_id)
         tmp_dir = '/tmp'
 
@@ -98,7 +102,8 @@ class VoxelConfig(object):
                 shutil.rmtree(extraction_dir)
             bar.finish()
 
-    def create_zip_file(self, cat_id, example_ids=None, overwrite=False):
+    def create_zip_file(
+            self, cat_id, example_ids=None, overwrite=False, delete_src=False):
         if example_ids is None or len(example_ids) == 0:
             path = self.get_binvox_path(cat_id, None)
             example_ids = (e[:-7] for e in os.listdir(path))
@@ -111,6 +116,60 @@ class VoxelConfig(object):
                     continue
                 src = self.get_binvox_path(cat_id, example_id)
                 zf.write(src, dst)
+        if delete_src:
+            import shutil
+            shutil.rmtree(self.get_binvox_path(cat_id, None))
+
+    def _create_hdf5(self, cat_id, load_fn):
+        import h5py
+        from .. import get_example_ids
+
+        from progress.bar import IncrementalBar
+        example_ids = get_example_ids(cat_id)
+        n = len(example_ids)
+        dtype = h5py.special_dtype(vlen=np.dtype(np.uint8))
+        with h5py.File(self.get_hdf5_path(cat_id), 'a') as root:
+            rle_data = root.require_dataset(
+                'rle_data', dtype=dtype, shape=(n,))
+            bar = IncrementalBar(max=n)
+            for i, example_id in enumerate(example_ids):
+                rle_data[i] = load_fn(example_id)
+                bar.next()
+            bar.finish()
+
+    def create_hdf5_data(self, cat_id, delete_src=False):
+        from util3d.voxel.binvox import Voxels
+
+        def load_fn(example_id):
+            src_path = self.get_binvox_path(cat_id, example_id)
+            return Voxels.from_path(src_path).rle_data()
+        self._create_hdf5(self, cat_id, load_fn)
+        if delete_src:
+            import shutil
+            shutil.rmtree(self.get_binvox_path(cat_id, None))
+
+    def create_hdf5_data_from_zip(self, cat_id, delete_src=False):
+        from util3d.voxel.binvox import Voxels
+        with self.get_dataset(cat_id) as ds:
+            def load_fn(example_id):
+                if example_id in ds:
+                    return ds[example_id].rle_data()
+                else:
+                    self.create_voxel_data(cat_id, [example_id])
+                    p = self.get_binvox_path(cat_id, example_id)
+                    if not os.path.isfile(p):
+                        print('***')
+                        print('Error with %s - %s' % (cat_id, example_id))
+                        print('***')
+                        return np.array([], dtype=np.uint8)
+                    rle_data = Voxels.from_path(p).rle_data()
+                    if delete_src:
+                        os.remove(p)
+                    return rle_data
+
+            self._create_hdf5(cat_id, load_fn)
+        if delete_src:
+            os.remove(self.get_zip_path(cat_id))
 
     def _get_dataset(self, cat_id, mode='r'):
         from dids.file_io.zip_file_dataset import ZipFileDataset
@@ -139,3 +198,29 @@ class VoxelConfig(object):
             self.create_zip_file(cat_id)
         assert(os.path.isfile(path))
         return self._get_dataset(cat_id, mode)
+
+    def _get_hdf5_dataset(self, cat_id, mode='r'):
+        from dids.file_io.hdf5 import Hdf5Dataset, Hdf5ArrayDataset
+        from util3d.voxel.binvox import RleVoxels
+        base = Hdf5Dataset(self.get_hdf5_path(cat_id))
+        ds = Hdf5ArrayDataset(base, 'rle_data')
+        example_ids = get_example_ids(cat_id)
+        indices = {k: i for i, k in enumerate(example_ids)}
+
+        dims = (self.voxel_dim,)*3
+        ds = ds.map(lambda data: RleVoxels(data, dims))
+        ds = ds.map_keys(
+            lambda example_id: indices[example_id],
+            lambda index: example_ids[index])
+        return ds
+
+    def get_hdf5_dataset(self, cat_id, mode='r'):
+        path = self.get_hdf5_path(cat_id)
+        if not os.path.isfile(path):
+            if os.path.isfile(self.get_zip_path(cat_id)):
+                self.create_hdf5_data_from_zip(cat_id)
+            else:
+                self.create_voxel_data(cat_id)
+                self.create_hdf5_data(cat_id)
+        assert(os.path.isfile(path))
+        return self._get_hdf5_dataset(cat_id, mode='r')
