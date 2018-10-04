@@ -1,27 +1,6 @@
 import path
 from path import get_example_ids
 
-# _cat_descs = {
-#     '02691156': 'plane',
-#     # '02924116': 'bus',
-#     '02958343': 'car',
-#     '03001627': 'chair',
-#     '04256520': 'sofa',
-#     '04379243': 'table',
-#     # '02834778': 'bicycle',
-#     # '03790512': 'motorbike',
-#     '02933112': 'cabinet',
-#     '03211117': 'monitor',
-#     '03636649': 'lamp',
-#     '03691459': 'speaker',
-#     '04530566': 'watercraft',
-#     '03948459': 'pistol',
-#     '02992529': 'cellphone',
-#     '02828884': 'bench',
-#     '02818832': 'bed',
-#     '03207941': 'dishwasher',
-# }
-
 _cat_descs = {
   '02691156': 'plane',
   '02773838': 'bag',

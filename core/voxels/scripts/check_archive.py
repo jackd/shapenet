@@ -1,3 +1,9 @@
+#!/usr/bin/python
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+
 def check_archive(cat_desc, voxel_dim, example_ids=None):
     from shapenet.core import cat_desc_to_id, get_example_ids
     from shapenet.core.voxels.config import VoxelConfig

@@ -3,7 +3,8 @@
 
 
 def create_archive(
-        cat_desc, shape=(192, 256), n_images=8, scale=None, example_ids=None):
+        cat_desc, shape=(192, 256), n_images=8, scale=None, example_ids=None,
+        delete_src=False):
     import os
     from shapenet.core import cat_desc_to_id
     from shapenet.core import get_example_ids
@@ -28,6 +29,10 @@ def create_archive(
                     zf.write(src, dst)
             bar.next()
         bar.finish()
+        if delete_src:
+            import shutil
+            print('Removing src...')
+            shutil.rmtree(config.get_cat_dir(cat_id))
 
 
 if __name__ == '__main__':
@@ -40,6 +45,8 @@ if __name__ == '__main__':
     parser.add_argument('-d', '--debug', action='store_true')
     parser.add_argument('-o', '--overwrite', action='store_true')
     parser.add_argument('-i', '--example_ids', nargs='*')
+    parser.add_argument('--delete_src', action='store_true')
     args = parser.parse_args()
     create_archive(
-        args.cat, args.shape, args.n_images, args.scale, args.example_ids)
+        args.cat, args.shape, args.n_images, args.scale, args.example_ids,
+        delete_src=args.delete_src)

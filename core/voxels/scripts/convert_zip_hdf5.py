@@ -45,4 +45,5 @@ for i, (config, cat_id) in enumerate(pairs):
     except Exception, KeyboardInterrupt:
         if os.path.isfile(config.get_hdf5_path(cat_id)):
             os.remove(config.get_hdf5_path(cat_id))
+        print('Error converting %s' % config.get_zip_path(cat_id))
         raise

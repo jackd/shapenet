@@ -1,5 +1,6 @@
-from config import VoxelConfig
+from config import VoxelConfig, get_config
 
 __all__ = [
-    VoxelConfig
+    VoxelConfig,
+    get_config
 ]
