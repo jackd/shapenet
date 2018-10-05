@@ -6,6 +6,10 @@ import os
 import zipfile
 
 
+_core_dir = os.path.realpath(os.path.dirname(__file__))
+_ids_dir = os.path.join(_core_dir, '_ids')
+
+
 def get_core_dir():
     key = 'SHAPENET_CORE_PATH'
     if key in os.environ:
@@ -58,7 +62,7 @@ def get_mtl_subpath(cat_id, example_id):
     return os.path.join(cat_id, example_id, 'model.mtl')
 
 
-def _get_example_ids(cat_id, category_zipfile):
+def _get_example_ids_from_zip(cat_id, category_zipfile):
     start = len(cat_id) + 1
     end = -len('model.obj')-1
     names = [
@@ -66,9 +70,19 @@ def _get_example_ids(cat_id, category_zipfile):
     return names
 
 
-def get_example_ids(cat_id, category_zipfile=None):
+def get_example_ids_from_zip(cat_id, category_zipfile=None):
     if category_zipfile is None:
         with get_zip_file(cat_id) as f:
-            return _get_example_ids(cat_id, f)
+            return _get_example_ids_from_zip(cat_id, f)
     else:
-        return _get_example_ids(cat_id, category_zipfile)
+        return _get_example_ids_from_zip(cat_id, category_zipfile)
+
+
+def get_ids_path(cat_id):
+    return os.path.join(_ids_dir, '%s.txt' % cat_id)
+
+
+def get_example_ids(cat_id):
+    with open(get_ids_path(cat_id), 'r') as fp:
+        ids = fp.readlines()
+    return tuple(id.rstrip() for id in ids)

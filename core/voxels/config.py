@@ -248,12 +248,12 @@ class VoxelConfig(object):
         from util3d.voxel.binvox import RleVoxels
         base = Hdf5Dataset(self.get_hdf5_path(cat_id))
         ds = Hdf5ArrayDataset(base, 'rle_data')
-        example_ids = get_example_ids(cat_id)
-        indices = {k: i for i, k in enumerate(example_ids)}
 
         dims = (self.voxel_dim,)*3
         ds = ds.map(lambda data: RleVoxels(data, dims))
         if id_keys:
+            example_ids = get_example_ids(cat_id)
+            indices = {k: i for i, k in enumerate(example_ids)}
             ds = ds.map_keys(
                 lambda example_id: indices[example_id],
                 lambda index: example_ids[index])
