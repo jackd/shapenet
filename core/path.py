@@ -21,6 +21,13 @@ def get_core_dir():
         raise Exception('%s environment variable not set.' % key)
 
 
+def get_extracted_core_dir(cat_id=None):
+    base = os.environ.get('SHAPENET_EXTRACTION_PATH', '/tmp/shapenet')
+    if cat_id is not None:
+        base = os.path.join(base, cat_id)
+    return base
+
+
 def get_cat_ids():
     from . import get_cat_ids
     print('Warning: using deprecated `get_cat_ids` in path. Use shapenet.core'

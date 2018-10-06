@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import string
 import zipfile
+import numpy as np
 from . import path
 
 
@@ -61,6 +62,9 @@ class RenderConfig(object):
 
     def view_angle(self, view_index):
         return view_index * 360 // self._n_images
+
+    def view_elevation(self, view_index):
+        return np.rad2deg(np.atan(0.6))
 
     @property
     def root_dir(self):

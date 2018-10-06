@@ -1,5 +1,10 @@
-import path
-from path import get_example_ids
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+
+from . import path
+get_example_ids = path.get_example_ids
 
 _cat_descs = {
   '02691156': 'plane',

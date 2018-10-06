@@ -5,7 +5,7 @@ rotation the camera around it.
 Also produces depth map at the same time.
 
 Example:
-blender --background --python mytest.py -- --views 10 /path/to/my.obj
+blender --background --python blender_render.py -- --views 10 /path/to/my.obj
 
 Original source:
 https://github.com/panmari/stanford-shapenet-renderer
