@@ -8,8 +8,11 @@ from absl import flags, app
 FLAGS = flags.FLAGS
 
 flags.DEFINE_integer('dim', default=128, help='dimension of square renderings')
-flags.DEFINE_bool('turntable', default=False, help='if True, renderings')
+flags.DEFINE_bool(
+    'turntable', default=False, help='render regular angles (default random)')
 flags.DEFINE_integer('n_renderings', default=24, help='number of renderings')
+flags.DEFINE_bool(
+    'verbose', default=True, help='suppress blender output if False')
 flags.DEFINE_list(
     'cat', default=None,
     help='category descriptions to render, e.g. "chair sofa plane"')
@@ -31,7 +34,7 @@ def main(_):
     manager = get_base_manager(cat_ids=cat_ids, **kwargs)
     if not os.path.isdir(manager.root_dir):
         create_base_manager()
-    manager.render_all()
+    manager.render_all(verbose=FLAGS.verbose)
 
 
 app.run(main)

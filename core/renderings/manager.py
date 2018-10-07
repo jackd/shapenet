@@ -222,7 +222,6 @@ def get_base_manager(dim=128, turntable=False, n_renderings=24, cat_ids=None):
 def create_base_manager(dim=128, turntable=False, n_renderings=24):
     from progress.bar import IncrementalBar
     from shapenet.r2n2 import get_cat_ids
-    raise Exception('top accidents.')
     manager = get_base_manager(
         dim=dim, turntable=turntable, n_renderings=n_renderings,
         cat_ids=get_cat_ids())
