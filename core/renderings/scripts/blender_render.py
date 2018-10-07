@@ -146,6 +146,13 @@ def remove_obj(objs):
 def main(manager_dir, cat_ids):
     from shapenet.core.renderings.manager import RenderableManagerBase
     manager = RenderableManagerBase(manager_dir, cat_ids)
+
+    keys = tuple(manager.needs_rendering_keys())
+    n = len(keys)
+
+    if n == 0:
+        print('No renderable keys - skipping.')
+        return
     params = manager.get_render_params()
 
     shape = params.get('shape', [128, 128])
@@ -206,8 +213,6 @@ def main(manager_dir, cat_ids):
 
         remove_obj(obj)
 
-    keys = manager.keys()
-    n = len(keys)
     print('Rendering %d examples for manager at %s' % (n, manager_dir))
     for index, key in enumerate(keys):
         render(key, index, n)

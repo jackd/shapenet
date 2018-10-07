@@ -15,11 +15,19 @@ def get_default_manager_dir(manager_id):
     return os.path.join(renderings_dir, manager_id)
 
 
+def has_renderings(folder, n_renderings, files_per_rendering=4):
+    return os.path.isdir(folder) and \
+            len(os.listdir(folder)) == files_per_rendering*n_renderings
+
+
 class RenderingsManager(object):
     def get_image(self, key, view_index, suffix=None):
         raise NotImplementedError('Abstract method')
 
     def get_camera_positions(self, key):
+        raise NotImplementedError('Abstract method')
+
+    def keys(self):
         raise NotImplementedError('Abstract method')
 
 
@@ -33,7 +41,7 @@ class RenderableManager(RenderingsManager):
     def get_render_params(self):
         raise NotImplementedError('Abstract method')
 
-    def keys(self):
+    def needs_rendering_keys():
         raise NotImplementedError('Abstract method')
 
     def get_image(self, key, view_index, suffix=None):
@@ -69,16 +77,16 @@ class RenderableManagerBase(RenderableManager):
         self._cat_ids = tuple(cat_ids)
 
     def keys(self):
-        import itertools
         from shapenet.core import get_example_ids
-        example_ids = [get_example_ids(cat_id) for cat_id in self._cat_ids]
-        cat_ids = [(cat_id,) * len(e) for
-                   cat_id, e in zip(self._cat_ids, example_ids)]
-        example_ids = tuple(itertools.chain(*example_ids))
-        cat_ids = tuple(itertools.chain(*cat_ids))
-        assert(len(example_ids) == len(cat_ids))
-        keys = tuple(zip(cat_ids, example_ids))
-        return keys
+        for cat_id in self._cat_ids:
+            for example_id in get_example_ids(cat_id):
+                yield (cat_id, example_id)
+
+    def needs_rendering_keys(self):
+        n_renderings = self._p['n_renderings']
+        files_per_rendering = 4
+        return (k for k in self.keys() if not has_renderings(
+            self.get_rendering_dir(k), n_renderings, files_per_rendering))
 
     @property
     def root_dir(self):
@@ -167,11 +175,14 @@ class RenderableManagerBase(RenderableManager):
             return os.path.join(
                 get_extracted_core_dir(), cat_id, example_id, 'model.obj')
 
-    def get_rendering_path(self, key, view_index, suffix=None):
+    def get_rendering_dir(self, key):
         cat_id, example_id = key
+        return self._path('renderings', cat_id, example_id)
+
+    def get_rendering_path(self, key, view_index, suffix=None):
         fn = ('r%03d.png' % view_index) if suffix is None else \
             'r%03d_%s.png' % (view_index, suffix)
-        return self._path('renderings', cat_id, example_id, fn)
+        return os.path.join(self.get_rendering_dir(key), fn)
 
     def render_all(
             self, verbose=True, blender_path='blender'):
@@ -185,7 +196,7 @@ class RenderableManagerBase(RenderableManager):
         script_path = os.path.join(_root_dir, 'scripts', 'blender_render.py')
         print(
             'Rendering %d examples. This could take some time...'
-            % len(self.keys()))
+            % len(tuple(self.needs_rendering_keys())))
         args = [
             blender_path, '--background',
             '--python', script_path, '--',
@@ -211,6 +222,7 @@ def get_base_manager(dim=128, turntable=False, n_renderings=24, cat_ids=None):
 def create_base_manager(dim=128, turntable=False, n_renderings=24):
     from progress.bar import IncrementalBar
     from shapenet.r2n2 import get_cat_ids
+    raise Exception('top accidents.')
     manager = get_base_manager(
         dim=dim, turntable=turntable, n_renderings=n_renderings,
         cat_ids=get_cat_ids())
