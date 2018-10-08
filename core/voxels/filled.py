@@ -147,6 +147,8 @@ class FilledVoxelConfig(VoxelConfig):
         dst = get_manager(self, cat_id, 'file')._get_dataset(mode='a')
         fill_fn = self.get_fill_voxels_fn((self.voxel_dim,)*3)
         src_ds = src.get_dataset().map(fill_fn)
+        if example_ids is not None:
+            src_ds = src_ds.subset(example_ids)
         with src_ds, dst:
             print('Writing filled voxels to file')
             dst.save_dataset(src_ds)

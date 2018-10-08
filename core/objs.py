@@ -25,6 +25,42 @@ def get_obj_file_dataset(cat_id):
     return dataset
 
 
+def get_extracted_obj_path_dataset(
+        cat_id, include_bad=False, use_fixed_meshes=True):
+    from dids.core import FunctionDataset
+    from .fixed_objs import get_fixed_obj_path, get_fixed_example_ids
+    from . import get_example_ids
+    from .path import get_obj_subpath
+    extracted_dir = get_extracted_core_dir()
+    example_ids = get_example_ids(cat_id, include_bad=include_bad)
+    try_extract_models(cat_id)
+
+    if use_fixed_meshes:
+        fixed_paths = {
+            k: get_fixed_obj_path(cat_id, k)
+            for k in get_fixed_example_ids(cat_id)}
+
+        def get_path(example_id):
+            if example_id in fixed_paths:
+                return fixed_paths[example_id]
+            else:
+                return os.path.join(
+                    extracted_dir, get_obj_subpath(cat_id, example_id))
+    else:
+        def get_path(example_id):
+            return os.path.join(
+                extracted_dir, get_obj_subpath(cat_id, example_id))
+
+    return FunctionDataset(get_path, example_ids)
+
+
+def get_extract_obj_file_dataset(
+        cat_id, include_bad=False, use_fixed_meshes=True):
+    return get_extracted_obj_path_dataset(
+        cat_id, include_bad=include_bad,
+        use_fixed_meshes=use_fixed_meshes).map(lambda path: open(path, 'r'))
+
+
 def extract_models(cat_id):
     extraction_dir = get_extracted_core_dir(cat_id)
     if os.path.isdir(extraction_dir):
@@ -46,10 +82,25 @@ def try_extract_models(cat_id):
     folder = get_extracted_core_dir(cat_id)
     if os.path.isdir(folder):
         example_ids = os.listdir(folder)
-        if len(example_ids) != len(get_example_ids(cat_id)):
+        if len(example_ids) != len(get_example_ids(cat_id, include_bad=True)):
             _extract_models(cat_id)
     else:
         _extract_models(cat_id)
+
+
+_bad_objs = {
+    '04090263': ('4a32519f44dc84aabafe26e2eb69ebf4',)
+}
+
+
+def get_bad_objs(cat_id):
+    """Get a tuple of ids that are "bad" - no vertices."""
+    return _bad_objs.get(cat_id, ())
+
+
+def is_bad_obj(cat_id, example_id):
+    """Flag indicating whether the obj file is "bad" (has no vertices)."""
+    return cat_id in _bad_objs and example_id in _bad_objs[cat_id]
 
 
 def remove_extracted_models(cat_id, confirm=True):

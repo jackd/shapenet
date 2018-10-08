@@ -130,13 +130,25 @@ def to_cat_id(cat):
         raise ValueError('cat %s is not a valid id or descriptor' % cat)
 
 
-def get_example_ids(cat_id):
+def get_example_ids(cat_id, include_bad=False):
     from .path import get_ids_path
     with open(get_ids_path(cat_id), 'r') as fp:
         ids = fp.readlines()
     ids = [id.rstrip() for id in ids]
     ids.sort()
+    if not include_bad:
+        from .objs import get_bad_objs
+        bad_objs = get_bad_objs(cat_id)
+        ids = (i for i in ids if i not in bad_objs)
     return tuple(ids)
+
+
+def get_old_example_ids(cat_id):
+    from .path import get_ids_path
+    with open(get_ids_path(cat_id), 'r') as fp:
+        ids = fp.readlines()
+    ids = [id.rstrip() for id in ids]
+    return ids
 
 
 __all__ = [

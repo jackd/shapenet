@@ -5,7 +5,7 @@ from __future__ import print_function
 import json
 import os
 import numpy as np
-from ..fixed_objs import is_bad_obj, get_fixed_obj_path
+from ..fixed_objs import is_fixed_obj, get_fixed_obj_path
 from .. import get_example_ids
 
 _root_dir = os.path.realpath(os.path.dirname(__file__))
@@ -169,7 +169,7 @@ class RenderableManagerBase(RenderableManager):
     def get_obj_path(self, key):
         from shapenet.core.path import get_extracted_core_dir
         cat_id, example_id = key
-        if is_bad_obj(cat_id, example_id):
+        if is_fixed_obj(cat_id, example_id):
             return get_fixed_obj_path(cat_id, example_id)
         else:
             return os.path.join(
@@ -199,34 +199,22 @@ class RenderableManagerBase(RenderableManager):
             blender_path, '--background',
             '--python', script_path, '--',
             '--manager_dir', self.root_dir]
+
         keys = tuple(self.needs_rendering_keys())
-
-        def make_batches(iterable, batch_size):
-            n = len(iterable)
-            for ndx in range(0, n, batch_size):
-                yield iterable[ndx:min(ndx + batch_size, n)]
-
         n = len(keys)
-        print('Rendering %d examples in %d batches...' % (n, n // batch_size))
-        bar = IncrementalBar(max=len(keys) // batch_size)
-        import time
-
-        for cat_id in self._cat_ids:
-            example_ids = get_example_ids(cat_id)
-            t = time.time()
-            for batch in make_batches(example_ids, batch_size):
-                print()
-                print((time.time() - t) / batch_size)
-                t = time.time()
-                bar.next()
-                proc = subprocess.Popen(
-                    args + ['--cat_id', cat_id, '--example_ids'] + list(batch),
-                    **call_kwargs)
-                try:
-                    proc.wait()
-                except KeyboardInterrupt:
-                    proc.kill()
-                    raise
+        print('Rendering %d examples' % n)
+        bar = IncrementalBar(max=n)
+        for key in keys:
+            cat_id, example_id = key
+            bar.next()
+            proc = subprocess.Popen(
+                args + ['--cat_id', cat_id, '--example_ids', example_id],
+                **call_kwargs)
+            try:
+                proc.wait()
+            except KeyboardInterrupt:
+                proc.kill()
+                raise
 
         bar.finish()
 

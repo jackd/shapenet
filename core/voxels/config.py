@@ -64,13 +64,11 @@ class VoxelConfig(object):
         return path.get_binvox_dir(self.voxel_id)
 
     def create_voxel_data(self, cat_id, example_ids=None, overwrite=False):
-        import shutil
         from progress.bar import IncrementalBar
         from util3d.voxel.convert import obj_to_binvox
-        from .. import path as core_path
+        from .. import objs
         if example_ids is None:
             example_ids = get_example_ids(cat_id)
-        tmp_dir = '/tmp'
 
         kwargs = dict(
             voxel_dim=self.voxel_dim,
@@ -78,32 +76,23 @@ class VoxelConfig(object):
             dc=self.dc,
             aw=self.aw,
             c=self.c,
-            v=self.v)
+            v=self.v,
+            overwrite_original=True)
 
-        with core_path.get_zip_file(cat_id) as zf:
+        path_ds = objs.get_extracted_obj_path_dataset(cat_id)
+        bvd = self.get_binvox_path(cat_id, None)
+        if not os.path.isdir(bvd):
+            os.makedirs(bvd)
+
+        with path_ds:
             bar = IncrementalBar(max=len(example_ids))
             for example_id in example_ids:
                 bar.next()
                 binvox_path = self.get_binvox_path(cat_id, example_id)
-                if os.path.isfile(binvox_path):
-                    if overwrite:
-                        os.remove(binvox_path)
-                    else:
-                        continue
-                subdir = os.path.dirname(binvox_path)
-                if not os.path.isdir(subdir):
-                    os.makedirs(subdir)
-                subpath = core_path.get_obj_subpath(cat_id, example_id)
-                zf.extract(subpath, tmp_dir)
-                obj_path = os.path.join(tmp_dir, subpath)
-                extraction_dir = os.path.join(
-                    tmp_dir, core_path.get_example_subdir(cat_id, example_id))
-                try:
+                if overwrite or not os.path.isfile(binvox_path):
+                    obj_path = path_ds[example_id]
                     obj_to_binvox(obj_path, binvox_path, **kwargs)
-                except IOError:
-                    print('Error generating %s/%s' % (cat_id, example_id))
-                shutil.rmtree(extraction_dir)
-            bar.finish()
+        bar.finish()
 
     def get_dataset(self, cat_id):
         from .datasets import get_dataset

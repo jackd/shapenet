@@ -20,12 +20,12 @@ def get_fixed_obj_path(cat_id, example_id):
     return os.path.join(get_fixed_obj_dir(cat_id, example_id), 'model.obj')
 
 
-def get_bad_model_ids(cat_id=None):
+def get_fixed_example_ids(cat_id=None):
     if cat_id is None:
         return _bad_ids.copy()
     else:
         return _bad_ids.get(cat_id, ())
 
 
-def is_bad_obj(cat_id, example_id):
-    return example_id in get_bad_model_ids(cat_id)
+def is_fixed_obj(cat_id, example_id):
+    return example_id in get_fixed_example_ids(cat_id)
