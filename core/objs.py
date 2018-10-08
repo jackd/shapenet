@@ -42,7 +42,7 @@ def _extract_models(cat_id):
 
 
 def try_extract_models(cat_id):
-    from .path import get_example_ids
+    from . import get_example_ids
     folder = get_extracted_core_dir(cat_id)
     if os.path.isdir(folder):
         example_ids = os.listdir(folder)

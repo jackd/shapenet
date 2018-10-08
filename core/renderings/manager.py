@@ -6,6 +6,7 @@ import json
 import os
 import numpy as np
 from ..fixed_objs import is_bad_obj, get_fixed_obj_path
+from .. import get_example_ids
 
 _root_dir = os.path.realpath(os.path.dirname(__file__))
 renderings_dir = os.path.join(_root_dir, '_renderings')
@@ -77,7 +78,6 @@ class RenderableManagerBase(RenderableManager):
         self._cat_ids = tuple(cat_ids)
 
     def keys(self):
-        from shapenet.core import get_example_ids
         for cat_id in self._cat_ids:
             for example_id in get_example_ids(cat_id):
                 yield (cat_id, example_id)
@@ -185,8 +185,9 @@ class RenderableManagerBase(RenderableManager):
         return os.path.join(self.get_rendering_dir(key), fn)
 
     def render_all(
-            self, verbose=True, blender_path='blender'):
+            self, verbose=True, batch_size=1, blender_path='blender'):
         import subprocess
+        from progress.bar import IncrementalBar
         _FNULL = open(os.devnull, 'w')
         call_kwargs = dict()
         if not verbose:
@@ -194,20 +195,40 @@ class RenderableManagerBase(RenderableManager):
             call_kwargs['stderr'] = subprocess.STDOUT
 
         script_path = os.path.join(_root_dir, 'scripts', 'blender_render.py')
-        print(
-            'Rendering %d examples. This could take some time...'
-            % len(tuple(self.needs_rendering_keys())))
         args = [
             blender_path, '--background',
             '--python', script_path, '--',
-            '--manager_dir', self.root_dir,
-            '--cat_id'] + list(self._cat_ids)
-        proc = subprocess.Popen(args, **call_kwargs)
-        try:
-            proc.wait()
-        except KeyboardInterrupt:
-            proc.kill()
-            raise
+            '--manager_dir', self.root_dir]
+        keys = tuple(self.needs_rendering_keys())
+
+        def make_batches(iterable, batch_size):
+            n = len(iterable)
+            for ndx in range(0, n, batch_size):
+                yield iterable[ndx:min(ndx + batch_size, n)]
+
+        n = len(keys)
+        print('Rendering %d examples in %d batches...' % (n, n // batch_size))
+        bar = IncrementalBar(max=len(keys) // batch_size)
+        import time
+
+        for cat_id in self._cat_ids:
+            example_ids = get_example_ids(cat_id)
+            t = time.time()
+            for batch in make_batches(example_ids, batch_size):
+                print()
+                print((time.time() - t) / batch_size)
+                t = time.time()
+                bar.next()
+                proc = subprocess.Popen(
+                    args + ['--cat_id', cat_id, '--example_ids'] + list(batch),
+                    **call_kwargs)
+                try:
+                    proc.wait()
+                except KeyboardInterrupt:
+                    proc.kill()
+                    raise
+
+        bar.finish()
 
 
 def get_base_manager(dim=128, turntable=False, n_renderings=24, cat_ids=None):

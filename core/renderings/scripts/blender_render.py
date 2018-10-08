@@ -143,9 +143,9 @@ def remove_obj(objs):
 #     return b_empty
 
 
-def main(manager_dir, cat_ids):
+def main(manager_dir, cat_id, example_ids):
     from shapenet.core.renderings.manager import RenderableManagerBase
-    manager = RenderableManagerBase(manager_dir, cat_ids)
+    manager = RenderableManagerBase(manager_dir, [cat_id])
 
     keys = tuple(manager.needs_rendering_keys())
     n = len(keys)
@@ -188,10 +188,9 @@ def main(manager_dir, cat_ids):
         cam_constraint.up_axis = 'UP_Y'
         cam_constraint.target = empty
 
-    def render(key, count, total):
+    def render(key):
         obj_path = manager.get_obj_path(key)
         eyes = manager.get_camera_positions(key)
-        print('Loading object %d / %d' % (count+1, total))
         obj = load_obj(obj_path, scale, remove_doubles, edge_split, invariants)
         # set output format to png
         scene.render.image_settings.file_format = 'PNG'
@@ -214,8 +213,8 @@ def main(manager_dir, cat_ids):
         remove_obj(obj)
 
     print('Rendering %d examples for manager at %s' % (n, manager_dir))
-    for index, key in enumerate(keys):
-        render(key, index, n)
+    for example_id in example_ids:
+        render((cat_id, example_id))
 
 
 def get_args():
@@ -224,7 +223,8 @@ def get_args():
     parser = argparse.ArgumentParser(
         description='Renders given obj file by rotation a camera around it.')
     parser.add_argument('--manager_dir', type=str, help='directory of manager')
-    parser.add_argument('--cat_id', type=str, nargs='+')
+    parser.add_argument('--cat_id', type=str)
+    parser.add_argument('--example_ids', type=str, nargs='+')
 
     argv = sys.argv[sys.argv.index("--") + 1:]
     args = parser.parse_args(argv)
@@ -233,4 +233,4 @@ def get_args():
 
 
 args = get_args()
-main(args.manager_dir, args.cat_id)
+main(args.manager_dir, args.cat_id, args.example_ids)

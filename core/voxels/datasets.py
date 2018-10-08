@@ -104,7 +104,10 @@ class BinvoxManager(DatasetManager):
 
     def _get_dataset(self, id_keys=True, mode='r'):
         from dids.file_io.file_dataset import FileDataset
-        dataset = FileDataset(self.data_dir)
+        dd = self.data_dir
+        if not os.path.isdir(dd):
+            os.makedirs(dd)
+        dataset = FileDataset(dd, mode=mode)
         return _map_binvox_dataset(dataset, self.cat_id, id_keys=id_keys)
 
     @property
