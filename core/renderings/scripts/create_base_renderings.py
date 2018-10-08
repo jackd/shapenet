@@ -15,7 +15,8 @@ flags.DEFINE_bool(
     'verbose', default=True, help='suppress blender output if False')
 flags.DEFINE_list(
     'cat', default=None,
-    help='category descriptions to render, e.g. "chair sofa plane"')
+    help='category descriptions to render, '
+         'comma separated, e.g. chair,sofa,plane')
 
 
 def main(_):

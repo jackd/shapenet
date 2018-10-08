@@ -87,9 +87,3 @@ def get_example_ids_from_zip(cat_id, category_zipfile=None):
 
 def get_ids_path(cat_id):
     return os.path.join(_ids_dir, '%s.txt' % cat_id)
-
-
-def get_example_ids(cat_id):
-    with open(get_ids_path(cat_id), 'r') as fp:
-        ids = fp.readlines()
-    return tuple(id.rstrip() for id in ids)

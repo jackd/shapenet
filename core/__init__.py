@@ -4,7 +4,6 @@ from __future__ import print_function
 
 
 from . import path
-get_example_ids = path.get_example_ids
 
 _cat_descs = {
   '02691156': 'plane',
@@ -129,6 +128,15 @@ def to_cat_id(cat):
         return cat
     else:
         raise ValueError('cat %s is not a valid id or descriptor' % cat)
+
+
+def get_example_ids(cat_id):
+    from .path import get_ids_path
+    with open(get_ids_path(cat_id), 'r') as fp:
+        ids = fp.readlines()
+    ids = [id.rstrip() for id in ids]
+    ids.sort()
+    return tuple(ids)
 
 
 __all__ = [

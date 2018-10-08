@@ -12,7 +12,8 @@ flags.DEFINE_bool(
 flags.DEFINE_integer('n_renderings', default=24, help='number of renderings')
 flags.DEFINE_list(
     'cat', default=None,
-    help='category descriptions to render, e.g. "chair sofa plane"')
+    help='category descriptions to render, '
+         'comma separated, e.g. chair,sofa,plane')
 
 
 def main(_):

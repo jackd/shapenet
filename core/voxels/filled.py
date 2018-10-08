@@ -99,6 +99,7 @@ class FilledVoxelConfig(VoxelConfig):
         else:
             check_valid_fill_alg(fill_alg)
         self._fill_alg = fill_alg
+        self._fill_fn = _fill_fns[fill_alg]
         self._base_config = base_config
         self._voxel_id = '%s_%s' % (base_config.voxel_id, fill_alg)
 
@@ -115,34 +116,37 @@ class FilledVoxelConfig(VoxelConfig):
             os.makedirs(dir)
         return dir
 
+    def get_fill_dense_fn(self, shape):
+        return self._fill_fn(shape)
+
+    def get_fill_voxels_fn(self, shape):
+        dense_fn = self.get_fill_dense_fn(shape)
+
+        def f(vox):
+            return DenseVoxels(
+                dense_fn(vox.dense_data()), scale=vox.scale,
+                translate=vox.translate)
+        return f
+
     def create_voxel_data(self, cat_id, example_ids=None, overwrite=False):
-        from progress.bar import IncrementalBar
-        src = self._base_config.get_dataset(cat_id)
-        with src:
-            if not overwrite:
-                if example_ids is None:
-                    example_ids = tuple(src.keys())
-                path = self.get_binvox_path(cat_id, example_ids[0])
+        from .datasets import get_manager
+        src = None
+        for pad in (True, False):
+            for compression in ('lzf', 'gzip', None):
+                for key in ('brle', 'rle'):
+                    src = get_manager(
+                        self._base_config, cat_id, key=key,
+                        compression=compression, pad=pad)
+                    if src.has_dataset():
+                        break
+        else:
+            src = get_manager(self._base_config, cat_id, key='zip')
+            if not src.has_dataset():
+                src = get_manager(self._base_config, cat_id, key='file')
 
-                example_ids = [e for e in example_ids if not os.path.isfile(
-                    self.get_binvox_path(cat_id, e))]
-
-            if example_ids is not None:
-                src = src.subset(example_ids)
-            fill_fn = _fill_fns[self._fill_alg]((self.voxel_dim,)*3)
-            # if not hasattr(fill_fn, '__enter__'):
-            #     fill_fn = DummyContextWrapper(fill_fn)
-            src = src.map(
-                lambda v: DenseVoxels(
-                    fill_fn(v.dense_data()), scale=v.scale,
-                    translate=v.translate))
-            folder = self.get_binvox_path(cat_id, None)
-            if not os.path.isdir(folder):
-                os.makedirs(folder)
-            # with fill_fn:
-            bar = IncrementalBar(max=len(src))
-            for example_id, vox in src.items():
-                path = self.get_binvox_path(cat_id, example_id)
-                vox.save(path)
-                bar.next()
-            bar.finish()
+        dst = get_manager(self, cat_id, 'file')._get_dataset(mode='a')
+        fill_fn = self.get_fill_voxels_fn((self.voxel_dim,)*3)
+        src_ds = src.get_dataset().map(fill_fn)
+        with src_ds, dst:
+            print('Writing filled voxels to file')
+            dst.save_dataset(src_ds)

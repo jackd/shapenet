@@ -5,20 +5,23 @@ from __future__ import print_function
 
 from mayavi import mlab
 from shapenet.core.voxels.config import get_config
+from shapenet.core.voxels.datasets import get_dataset
 from shapenet.core import cat_desc_to_id, get_example_ids
 from util3d.mayavi_vis import vis_sliced
 from util3d.mayavi_vis import vis_contours
 # from util3d.mayavi_vis import vix_voxels
 
-cat_desc = 'car'
-voxel_dim = 256
+cat_desc = 'cellphone'
+voxel_dim = 32
+format_key = 'file'
 # alt = True
 # voxel_dim = 32
 cat_id = cat_desc_to_id(cat_desc)
 example_ids = get_example_ids(cat_id)
 
-config = get_config(voxel_dim, alt=False).filled('orthographic')
-with config.get_dataset(cat_id) as dataset:
+# config = get_config(voxel_dim, alt=False).filled('orthographic')
+config = get_config(voxel_dim, alt=False)
+with get_dataset(config, cat_id, format_key) as dataset:
     for example_id in example_ids:
         voxels = dataset[example_id]
         mlab.figure()

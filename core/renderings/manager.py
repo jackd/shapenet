@@ -100,7 +100,7 @@ class RenderableManagerBase(RenderableManager):
         return self._path('render_params.json')
 
     def check_render_params(self, **render_params):
-        if self._get_render_params() != _get_render_params(**render_params):
+        if self._p != _get_render_params(**render_params):
             raise IOError(
                 'render_params provided inconsistent with those saved '
                 'to file.')
