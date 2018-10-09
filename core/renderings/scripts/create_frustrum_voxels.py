@@ -35,7 +35,7 @@ def main(_):
     for cat in cats:
         cat_id = to_cat_id(cat)
         args = manager, voxel_config, FLAGS.voxel_dim, cat_id
-        if FLAGS.temp:
+        if FLAGS.temp_only:
             create_temp_frustrum_voxels(*args)
         else:
             create_frustrum_voxels(*args)
