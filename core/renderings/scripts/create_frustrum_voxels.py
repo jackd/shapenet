@@ -26,7 +26,8 @@ def main(_):
 
     cats = FLAGS.cat
     if cats is None:
-        raise ValueError('Must provide at least one cat to process')
+        from shapenet.r2n2 import get_cat_ids
+        cats = get_cat_ids()
 
     for cat in cats:
         cat_id = to_cat_id(cat)
