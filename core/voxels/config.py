@@ -85,6 +85,7 @@ class VoxelConfig(object):
             os.makedirs(bvd)
 
         with path_ds:
+            print('Creating binvox voxel data')
             bar = IncrementalBar(max=len(example_ids))
             for example_id in example_ids:
                 bar.next()

@@ -5,7 +5,7 @@ Script for creating/converting voxel data formats.
 
 Example usage:
 ./create_dataset.py --cat=car,plane --voxel_dim=128 \
-    --format=rle --overwrite=True --compression=gzip --pad=True
+    --format=rle --overwrite=True --compression=gzip --shape=pad
     --src_format=file
 """
 
@@ -28,19 +28,18 @@ flags.DEFINE_list(
 flags.DEFINE_boolean(
     'overwrite', default=False, help='overwrite existing data')
 flags.DEFINE_string(
-    'format', default=None,
+    'format', default='file',
     help='input format, one of '
-         '[None, "file", "zip", "rle", "brle"]')
-flags.DEFINE_boolean(
-    'pad', default=None,
-    help='whether or not to pad data for rle/brle formats')
+         '["file", "zip", "rle", "brle"]')
 flags.DEFINE_string(
-    'compression', default=None, help='one of ["gzip", "lzf"]')
+    'shape', default=None, help='one of ["pad", "jag", "ind"]')
+flags.DEFINE_string(
+    'compression', default=None, help='one of [None, "gzip", "lzf"]')
 
+flags.DEFINE_string(
+    'src_shape', default=None, help='one of ["pad", "jag", "ind"]')
 flags.DEFINE_boolean(
-    'src_pad', default=None, help='whether or not to use padded src')
-flags.DEFINE_boolean(
-    'src_compression', default=None, help='one of ["gzip", "lzf"]')
+    'src_compression', default=None, help='one of [None, "gzip", "lzf"]')
 flags.DEFINE_string(
     'src_format', default=None,
     help='output format, one of '
@@ -62,21 +61,23 @@ def safe_update(out, **added):
 def main(_):
     from shapenet.core.voxels.config import get_config
     from shapenet.core.voxels.datasets import get_manager, convert
-    from shapenet.core import cat_desc_to_id
+    from shapenet.core import to_cat_id
     config = get_config(FLAGS.voxel_dim, alt=FLAGS.alt)
     if FLAGS.cat is None:
+        # from shapenet.r2n2 import get_cat_ids
         raise ValueError('Must provide at least one cat to convert.')
     if FLAGS.fill is not None:
         config = config.filled(FLAGS.fill)
 
     kwargs = dict(config=config, key=FLAGS.format)
-    safe_update(kwargs, compression=FLAGS.compression, pad=FLAGS.pad)
-    src_kwargs = dict(key=FLAGS.src_format)
+    safe_update(kwargs, compression=FLAGS.compression, shape_key=FLAGS.shape)
+    src_kwargs = dict()
     safe_update(
-        src_kwargs, compression=FLAGS.src_compression, pad=FLAGS.src_pad)
+        src_kwargs, key=FLAGS.src_format, compression=FLAGS.src_compression,
+        shape=FLAGS.src_shape)
 
     for cat in FLAGS.cat:
-        dst = get_manager(cat_id=cat_desc_to_id(cat), **kwargs)
+        dst = get_manager(cat_id=to_cat_id(cat), **kwargs)
         convert(
             dst, overwrite=FLAGS.overwrite, delete_src=FLAGS.delete_src,
             **src_kwargs)

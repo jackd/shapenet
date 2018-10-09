@@ -18,20 +18,21 @@ def _as_readable(writing_fn):
     return fp
 
 
-def _map_binvox_dataset(dataset, cat_id, id_keys=True):
+def _map_binvox_dataset(dataset, cat_id, id_keys=True, prefix=''):
     dataset = dataset.map(
         bv.Voxels.from_file,
         inverse_map_fn=lambda vox: _as_readable(vox.save_to_file))
+    pl = len(prefix)
     if id_keys:
         dataset = dataset.map_keys(
-            lambda x: '%s.binvox' % x,
-            lambda x: x[:-7])
+            lambda x:  '%s%s.binvox' % (prefix, x),
+            lambda x: x[pl:-7])
     else:
         example_ids = get_example_ids(cat_id)
         indices = {k: i for i, k in enumerate(example_ids)}
         dataset = dataset.map_keys(
-            lambda i: '%s.binvox' % (example_ids[i]),
-            lambda k: indices[k[:-7]])
+            lambda i: '%s%s.binvox' % (prefix, example_ids[i]),
+            lambda k: indices[k[pl:-7]])
     return dataset
 
 
@@ -53,17 +54,23 @@ class DatasetManager(object):
         raise NotImplementedError('Abstract property')
 
     def get_manager(self, key=None, **kwargs):
+        if key is None:
+            assert(len(kwargs) == 0)
+            return self.get_default_src()
         return get_manager(self.config, self.cat_id, key, **kwargs)
+
+    def get_default_src(self):
+        return self.get_manager('file')
 
     def create_from(self, src=None, overwrite=False):
         if src is None:
             src = self.get_manager('file')
-        with src.get_dataset(id_keys=False) as src:
+        with src.get_dataset(id_keys=False) as src_ds:
             with self._get_dataset(id_keys=False, mode='a') as dst:
                 print(
                     'Creating voxel rle dataset from src: %s' % src.format_key)
                 dst.save_dataset(
-                    src, overwrite=overwrite, show_progress=True)
+                    src_ds, overwrite=overwrite, show_progress=True)
 
     def delete(self):
         raise NotImplementedError('Abstract method')
@@ -119,12 +126,16 @@ class ZippedBinvoxManager(DatasetManager):
     def create_from(self, src, overwrite=False):
         if src is None:
             src = self.get_manager('file')
-        elif src.format_key != 'file':
-            raise ValueError('Can only create ZippedBinvox data from "file"')
-        path = self.path
-        if os.path.isfile(path) and not overwrite:
-            raise NotImplementedError()
-        shutil.make_archive(path[:-4], 'zip', src.data_dir)
+        if isinstance(src, BinvoxManager):
+            path = self.path
+            if os.path.isfile(path) and not overwrite:
+                raise NotImplementedError()
+            src.get_dataset()
+            shutil.make_archive(
+                path[:-4], 'zip', os.path.dirname(src.data_dir),
+                base_dir=self.cat_id)
+        else:
+            super(ZippedBinvoxManager, self).create_from(src, overwrite)
 
     @property
     def path(self):
@@ -141,7 +152,8 @@ class ZippedBinvoxManager(DatasetManager):
     def _get_dataset(self, id_keys=True, mode='r'):
         from dids.file_io.zip_file_dataset import ZipFileDataset
         dataset = ZipFileDataset(self.path, mode=mode)
-        return _map_binvox_dataset(dataset, self.cat_id, id_keys)
+        return _map_binvox_dataset(
+            dataset, self.cat_id, id_keys, prefix='%s/' % self.cat_id)
 
     @property
     def format_key(self):
@@ -153,12 +165,12 @@ class Hdf5Manager(DatasetManager):
         super(Hdf5Manager, self).__init__(config, cat_id)
         if isinstance(compression, (str, unicode)):
             compression = compression.lower()
-            if compression == 'none':
+            if compression == 'none' or compression == 'raw':
                 compression = None
         self._compression = compression
         self._encoder = as_encoder(encoder)
 
-    def _get_default_src(self):
+    def get_default_src(self):
         src = self.get_manager('zip')
         if not src.has_dataset():
             src = self.get_manager('file')
@@ -173,10 +185,15 @@ class Hdf5Manager(DatasetManager):
         return self._compression
 
     @property
+    def shape_key(self):
+        raise NotImplementedError('Abstract property')
+
+    @property
     def format_key(self):
         comp = self.compression
-        return self.encoder.key if comp is None else \
-            '%s-%s' % (self.encoder.key, comp)
+        if comp is None:
+            comp = 'raw'
+        return '%s-%s-%s' % (self.encoder.key, self.shape_key, comp)
 
     def delete(self):
         print('Deleting %s hdf5 data' % self.format_key)
@@ -212,13 +229,43 @@ class Hdf5Manager(DatasetManager):
         return dataset
 
 
-class VlenHdf5Manager(Hdf5Manager):
+class IndividualHdf5Manager(Hdf5Manager):
+    @property
+    def shape_key(self):
+        return 'ind'
+
+    def _get_dataset(self, id_keys=True, mode='r'):
+        from dids.file_io.hdf5 import Hdf5Dataset
+        dataset = Hdf5Dataset(
+            self.path, mode=mode, compression=self.compression)
+        dims = (self.config.voxel_dim,) * 3
+        decode = self.encoder.from_numpy
+        encode = self.encoder.to_numpy
+        dataset = dataset.map(
+            lambda x: decode(np.array(x), dims),
+            inverse_map_fn=encode)
+
+        if not id_keys:
+            example_ids = get_example_ids(self.cat_id)
+            indices = {k: i for i, k in enumerate(example_ids)}
+            dataset = dataset.map_keys(
+                lambda index: example_ids[index],
+                lambda example_id: indices[example_id]
+            )
+        return dataset
+
+    @property
+    def _group_name(self):
+        raise NotImplementedError('No group')
+
+
+class JaggedHdf5Manager(Hdf5Manager):
 
     def create_from(self, src=None, overwrite=False):
         import h5py
         from progress.bar import IncrementalBar
         if src is None:
-            src = self._get_default_src()
+            src = self.get_default_src()
         with src.get_dataset(id_keys=True) as src:
             example_ids = get_example_ids(self.cat_id)
             n = len(example_ids)
@@ -236,17 +283,17 @@ class VlenHdf5Manager(Hdf5Manager):
                     bar.next()
                 bar.finish()
 
+    @property
+    def shape_key(self):
+        return 'jag'
+
 
 class PaddedHdf5Manager(Hdf5Manager):
     @property
-    def format_key(self):
-        comp = self.compression
-        if comp is None:
-            return '%s-pad' % (self.encoder.key)
-        else:
-            return '%s-pad-%s' % (self.encoder.key, comp)
+    def shape_key(self):
+        return 'pad'
 
-    def _get_default_src(self):
+    def get_default_src(self):
         src = self.get_manager(
             'hdf5', encoder=self.encoder, compression=self.compression)
         if src.has_dataset():
@@ -258,13 +305,13 @@ class PaddedHdf5Manager(Hdf5Manager):
                 if src.has_dataset():
                     return src
 
-        return super(PaddedHdf5Manager, self)._get_default_src()
+        return super(PaddedHdf5Manager, self).get_default_src()
 
     def create_from(self, src=None, overwrite=False):
         import h5py
         from progress.bar import IncrementalBar
         if src is None:
-            src = self._get_default_src()
+            src = self.get_default_src()
         with src.get_dataset(id_keys=True) as src:
             example_ids = get_example_ids(self.cat_id)
             n = len(example_ids)
@@ -279,13 +326,19 @@ class PaddedHdf5Manager(Hdf5Manager):
             bar.finish()
             m = max(len(v) for v in values)
             print('Saving...')
-            with h5py.File(self.path, 'a') as dst:
-                dst = dst.require_dataset(
+            path = self.path
+            dn = os.path.dirname(path)
+            if not os.path.isdir(dn):
+                os.makedirs(dn)
+            # if overwrite and os.path.isfile(path):
+            #     os.remove(path)
+            with h5py.File(path, mode='w' if overwrite else 'a') as dst:
+                dst_group = dst.require_dataset(
                     self._group_name, dtype=np.uint8, shape=(n, m),
                     compression=self.compression)
                 print('Saving data to %s' % self.path)
                 for i, val in enumerate(values):
-                    dst[i, :len(val)] = val
+                    dst_group[i, :len(val)] = val
 
 
 class Encoder(object):
@@ -362,12 +415,19 @@ _load_fns = {
     'brle': bv.BrleVoxels,
 }
 
+_shape_fns = {
+    'pad': PaddedHdf5Manager,
+    'jag': JaggedHdf5Manager,
+    'ind': IndividualHdf5Manager
+}
+
 
 def get_hdf5_manager(
-        config, cat_id, encoder='rle', pad=True, compression='gzip'):
-    fn = PaddedHdf5Manager if pad else VlenHdf5Manager
-    return fn(config, cat_id, encoder=as_encoder(encoder),
-              compression=compression)
+        config, cat_id, encoder='rle', shape_key='pad', compression='gzip'):
+    if compression == 'raw':
+        compression = None
+    return _shape_fns[shape_key](
+        config, cat_id, encoder=as_encoder(encoder), compression=compression)
 
 
 get_rle_manager = functools.partial(get_hdf5_manager, encoder='rle')
@@ -388,8 +448,11 @@ def get_manager(config, cat_id, key='file', **kwargs):
 
 
 def get_dataset(config, cat_id, id_keys=True, key='file', **kwargs):
-    return get_manager(
-        config, cat_id, key, **kwargs).get_dataset(id_keys)
+    manager = get_manager(
+        config, cat_id, key, **kwargs)
+    return manager.get_dataset(id_keys)
+    # return get_manager(
+    #     config, cat_id, key, **kwargs).get_dataset(id_keys)
 
 
 def convert(dst, overwrite=False, delete_src=False, **src_kwargs):
@@ -408,17 +471,9 @@ def get_manager_from_filename(config, fn):
         cat_id = base
         return get_manager(config, cat_id, key='zip')
     elif ext == 'hdf5':
-        base = base.split('-')
-        kwargs = dict(config=config, cat_id=base[0])
-        if len(base) == 2:
-            cat_id = base[0]
-            if base[1] == 'pad':
-                return get_hdf5_manager(compression=None, pad=True, **kwargs)
-            else:
-                return get_hdf5_manager(
-                    compression=base[1], pad=False, **kwargs)
-        elif len(base) == 3:
-            assert(base[1] == 'pad')
-            return get_hdf5_manager(compression=base[2], pad=True, **kwargs)
+        cat_id, shape_key, compression = base.split('-')
+        return get_hdf5_manager(
+            config=config, cat_id=cat_id, compression=compression,
+            shape_key=shape_key)
 
     raise ValueError('Unrecognized filename %s' % fn)

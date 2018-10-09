@@ -75,7 +75,8 @@ class RenderableManagerBase(RenderableManager):
         if cat_ids is None:
             from shapenet.r2n2 import get_cat_ids
             self._cat_ids = get_cat_ids()
-        self._cat_ids = tuple(cat_ids)
+        else:
+            self._cat_ids = tuple(cat_ids)
 
     def keys(self):
         for cat_id in self._cat_ids:
@@ -86,7 +87,7 @@ class RenderableManagerBase(RenderableManager):
         n_renderings = self._p['n_renderings']
         files_per_rendering = 4
         return (k for k in self.keys() if not has_renderings(
-            self.get_rendering_dir(k), n_renderings, files_per_rendering))
+            self.get_renderings_dir(k), n_renderings, files_per_rendering))
 
     @property
     def root_dir(self):
@@ -141,6 +142,34 @@ class RenderableManagerBase(RenderableManager):
         cat_id, example_id = key
         return self._path('camera_positions', cat_id, '%s.txt' % example_id)
 
+    def _fix_camera_positions(self, key):
+        import shutil
+        cat_id, example_id = key
+        old_path = self._path(
+            cat_id, 'camera_positions', '%s.txt' % example_id)
+        if os.path.isfile(old_path):
+            new_path = self._path(
+                'camera_positions', cat_id, '%s.txt' % example_id)
+            assert(not os.path.isfile(new_path))
+            dn = os.path.dirname(new_path)
+            if not os.path.isdir(dn):
+                os.makedirs(dn)
+            shutil.move(old_path, new_path)
+
+    def _fix_renderings(self, key):
+        import shutil
+        cat_id, example_id = key
+        old_dir = self._path(cat_id, 'renderings', example_id)
+        if os.path.isdir(old_dir):
+            new_dir = self._path('renderings', cat_id, example_id)
+            assert(not os.path.isdir(new_dir))
+            shutil.move(old_dir, new_dir)
+
+    def fix_all(self):
+        for k in self.keys():
+            self._fix_camera_positions(k)
+            self._fix_renderings(k)
+
     def get_camera_positions(self, key):
         path = self._get_camera_positions_path(key)
         if os.path.isfile(path):
@@ -175,14 +204,17 @@ class RenderableManagerBase(RenderableManager):
             return os.path.join(
                 get_extracted_core_dir(), cat_id, example_id, 'model.obj')
 
-    def get_rendering_dir(self, key):
+    def get_renderings_dir(self, key):
         cat_id, example_id = key
         return self._path('renderings', cat_id, example_id)
+
+    def get_cat_dir(self, cat_id):
+        return self._path('renderings', cat_id)
 
     def get_rendering_path(self, key, view_index, suffix=None):
         fn = ('r%03d.png' % view_index) if suffix is None else \
             'r%03d_%s.png' % (view_index, suffix)
-        return os.path.join(self.get_rendering_dir(key), fn)
+        return os.path.join(self.get_renderings_dir(key), fn)
 
     def render_all(
             self, verbose=True, batch_size=1, blender_path='blender'):
@@ -202,6 +234,9 @@ class RenderableManagerBase(RenderableManager):
 
         keys = tuple(self.needs_rendering_keys())
         n = len(keys)
+        if n == 0:
+            print('No keys to render.')
+            return
         print('Rendering %d examples' % n)
         bar = IncrementalBar(max=n)
         for key in keys:

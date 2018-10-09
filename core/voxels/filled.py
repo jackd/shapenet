@@ -131,12 +131,12 @@ class FilledVoxelConfig(VoxelConfig):
     def create_voxel_data(self, cat_id, example_ids=None, overwrite=False):
         from .datasets import get_manager
         src = None
-        for pad in (True, False):
+        for shape_key in ('pad', 'jag', 'ind'):
             for compression in ('lzf', 'gzip', None):
                 for key in ('brle', 'rle'):
                     src = get_manager(
                         self._base_config, cat_id, key=key,
-                        compression=compression, pad=pad)
+                        compression=compression, shape_key=shape_key)
                     if src.has_dataset():
                         break
         else:
