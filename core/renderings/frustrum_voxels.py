@@ -25,6 +25,7 @@ def _make_dir(filename):
 
 def convert(vox, eye, ray_shape):
     dense_data = vox.dense_data()
+    dense_data = dense_data[:, -1::-1]
     n = np.linalg.norm(eye)
     R, t = get_eye_to_world_transform(eye)
     z_near = n - 0.5
@@ -34,6 +35,7 @@ def convert(vox, eye, ray_shape):
         dense_data, R, t, f, z_near, z_far, ray_shape,
         include_corners=False)
     frust[np.logical_not(inside)] = 0
+    frust = frust[:, -1::-1]
     return DenseVoxels(frust)
 
 
