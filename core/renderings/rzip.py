@@ -28,7 +28,8 @@ def add_renderings(manager, cat, base_only=True, path=None):
 
     print('Compressing data %s -> %s' % (cat_id, path))
     if base_only:
-        with zipfile.ZipFile(path, 'a') as zf:
+        with zipfile.ZipFile(
+                path, 'a', zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
             example_ids = get_example_ids(cat_id)
             n = len(example_ids)
             bar = IncrementalBar(max=n)
