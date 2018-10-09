@@ -36,7 +36,7 @@ def create_camera_positions(
 
 
 def get_camera_positions_path(manager):
-    os.path.join(manager.root_dir, 'camera_positions.hdf5')
+    return os.path.join(manager.root_dir, 'camera_positions.hdf5')
 
 
 def get_camera_positions(manager, mode='r'):
