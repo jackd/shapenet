@@ -51,7 +51,7 @@ def get_frustrum_voxels_path(
         render_manager, voxel_config, out_dim, cat_id, temp=False)
 
 
-def _create_temp_frustrum_voxels(
+def create_temp_frustrum_voxels(
         render_manager, voxel_config, out_dim, cat_id):
     from progress.bar import IncrementalBar
     n_renderings = render_manager.get_render_params()['n_renderings']
@@ -117,7 +117,7 @@ def create_frustrum_voxels(render_manager, voxel_config, out_dim, cat_id):
     if os.path.isfile(dst_path):
         print('Already present.')
         return
-    _create_temp_frustrum_voxels(**kwargs)
+    create_temp_frustrum_voxels(**kwargs)
     src_path = _get_frustrum_voxels_path(temp=True, **kwargs)
 
     print('Shrinking data to fit.')
