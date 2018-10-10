@@ -71,7 +71,7 @@ class TarArchive(ArchiveBase):
         self._file.add(src, dst)
 
     def get_names(self):
-        return (member.name for member in self._file.getmembers())
+        return self._file.getnames()
 
 
 def get_archive(path, mode='r'):

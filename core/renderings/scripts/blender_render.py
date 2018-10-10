@@ -204,7 +204,7 @@ def main(manager_dir, cat_id, example_ids):
         for i, eye in enumerate(eyes):
             set_camera(eye)
             base_path = manager.get_rendering_path(key, i)
-            folder = os.path.basename(base_path)
+            folder = os.path.dirname(base_path)
             if not os.path.isdir(folder):
                 os.makedirs(folder)
             if base_path.endswith('.png'):
