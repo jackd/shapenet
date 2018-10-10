@@ -145,7 +145,8 @@ def remove_obj(objs):
 
 
 def main(manager_dir, cat_id, example_ids):
-    from shapenet.core.renderings.render_manager import RenderableManagerBase
+    from shapenet.core.renderings.renderings_manager import \
+        RenderableManagerBase
     manager = RenderableManagerBase(manager_dir, [cat_id])
 
     keys = tuple(manager.needs_rendering_keys())

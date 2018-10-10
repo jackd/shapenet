@@ -212,9 +212,18 @@ class RenderableManagerBase(RenderableManager):
         return self._path('renderings', cat_id)
 
     def get_rendering_path(self, key, view_index, suffix=None):
-        fn = ('r%03d.png' % view_index) if suffix is None else \
-            'r%03d_%s.png' % (view_index, suffix)
+        fn = self.get_rendering_filename(view_index, suffix)
         return os.path.join(self.get_renderings_dir(key), fn)
+
+    def get_rendering_filename(self, view_index, suffix=None):
+        return ('r%03d.png' % view_index) if suffix is None else \
+                'r%03d_%s.png' % (view_index, suffix)
+
+    def get_rendering_subpath(self, key, view_index, suffix=None):
+        cat_id, example_id = key
+        return os.path.join(
+            cat_id, example_id,
+            self.get_rendering_filename(view_index, suffix))
 
     def render_all(
             self, verbose=True, batch_size=1, blender_path='blender'):
