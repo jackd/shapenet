@@ -27,10 +27,13 @@ def main(_):
         dim=FLAGS.dim, turntable=FLAGS.turntable,
         n_renderings=FLAGS.n_renderings)
     if FLAGS.cat is None:
-        raise ValueError('Please specify at least one cat')
+        from shapenet.r2n2 import get_cat_ids
+        cats = get_cat_ids()
+    else:
+        cats = FLAGS.cat
     format = FLAGS.format
     mode = 'r' if FLAGS.check else 'a'
-    for cat in FLAGS.cat:
+    for cat in cats:
         archive_manager = get_archive_manager(
             rend_manager, cat, base_only=not FLAGS.full,
             format=format, mode=mode)

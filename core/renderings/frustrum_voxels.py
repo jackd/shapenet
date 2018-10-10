@@ -77,7 +77,7 @@ def create_temp_frustrum_voxels(
             attrs = vox_dst.attrs
             prog = attrs.get('prog', 0)
             if prog == n0:
-                return
+                return temp_path
 
             attrs.setdefault('n_renderings', n_renderings)
             max_len = attrs.setdefault('max_len', 0)
@@ -116,7 +116,7 @@ def create_temp_frustrum_voxels(
                                     'max_max_len exceeded. %d > %d'
                                     % (dlen, max_max_len))
                         rle_dst[i, j, :dlen] = data
-                    attrs['prog'] = i
+                    attrs['prog'] = i+1
                 bar.finish()
     return temp_path
 
@@ -133,10 +133,6 @@ def create_frustrum_voxels(render_manager, voxel_config, out_dim, cat_id):
     temp_path = create_temp_frustrum_voxels(
         render_manager=render_manager, **kwargs)
 
-    src_path = _get_frustrum_voxels_path(
-        manager_dir=render_manager.root_dir, temp=True, **kwargs)
-    assert(src_path == temp_path)
-
     print('Shrinking data to fit.')
     with h5py.File(temp_path, 'r') as src:
         max_len = src.attrs['max_len']
@@ -145,4 +141,4 @@ def create_frustrum_voxels(render_manager, voxel_config, out_dim, cat_id):
         with h5py.File(dst_path, 'w') as dst:
             dst.create_dataset(
                 GROUP_KEY, data=src_group[:, :, :max_len],
-                compression='lzf')
+                compression=compression)

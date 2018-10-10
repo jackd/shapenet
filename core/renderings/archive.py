@@ -35,6 +35,14 @@ class ArchiveBase(Archive):
         self._mode = mode
         self._file = None
 
+    @property
+    def path(self):
+        return self._path
+
+    @property
+    def mode(self):
+        return self._mode
+
     def get_open_file(self):
         raise NotImplementedError('Abstract method')
 
@@ -48,13 +56,13 @@ class ArchiveBase(Archive):
         self._file = None
 
     def open(self):
-        self._file = self.get_open_file(self._path, self._mode)
+        self._file = self.get_open_file()
 
 
 class ZipArchive(ArchiveBase):
-    def get_open_file(self, path, mode):
+    def get_open_file(self):
         return zipfile.ZipFile(
-            path, mode, zipfile.ZIP_DEFLATED, allowZip64=True)
+            self.path, self.mode, zipfile.ZIP_DEFLATED, allowZip64=True)
 
     def add(self, src, dst):
         self._file.write(src, dst)
@@ -64,8 +72,8 @@ class ZipArchive(ArchiveBase):
 
 
 class TarArchive(ArchiveBase):
-    def get_open_file(self, path, mode):
-        return tarfile.open(path, mode)
+    def get_open_file(self):
+        return tarfile.open(self.path, self.mode)
 
     def add(self, src, dst):
         self._file.add(src, dst)
