@@ -17,7 +17,7 @@ flags.DEFINE_bool('temp_only', default=False, help='If True, does not squeeze')
 
 def main(_):
     from shapenet.core import to_cat_id
-    from shapenet.core.renderings.manager import get_base_manager
+    from shapenet.core.renderings.renderings_manager import get_base_manager
     from shapenet.core.renderings.frustrum_voxels import create_frustrum_voxels
     from shapenet.core.renderings.frustrum_voxels import \
         create_temp_frustrum_voxels

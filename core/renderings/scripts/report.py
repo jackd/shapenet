@@ -17,7 +17,7 @@ flags.DEFINE_list(
 
 
 def main(_):
-    from shapenet.core.renderings.manager import get_base_manager
+    from shapenet.core.renderings.render_manager import get_base_manager
     from shapenet.core import cat_desc_to_id
     from shapenet.core import cat_id_to_desc
     cat = FLAGS.cat

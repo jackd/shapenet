@@ -11,6 +11,7 @@ blender --background --python blender_render.py -- \
 Original source:
 https://github.com/panmari/stanford-shapenet-renderer
 """
+import os
 import bpy
 
 
@@ -144,7 +145,7 @@ def remove_obj(objs):
 
 
 def main(manager_dir, cat_id, example_ids):
-    from shapenet.core.renderings.manager import RenderableManagerBase
+    from shapenet.core.renderings.render_manager import RenderableManagerBase
     manager = RenderableManagerBase(manager_dir, [cat_id])
 
     keys = tuple(manager.needs_rendering_keys())
@@ -202,6 +203,9 @@ def main(manager_dir, cat_id, example_ids):
         for i, eye in enumerate(eyes):
             set_camera(eye)
             base_path = manager.get_rendering_path(key, i)
+            folder = os.path.basename(base_path)
+            if not os.path.isdir(folder):
+                os.makedirs(folder)
             if base_path.endswith('.png'):
                 base_path = base_path[:-4]
             scene.render.filepath = base_path

@@ -16,6 +16,8 @@ from util3d.voxel.binvox import DenseVoxels, RleVoxels
 compression = 'lzf'
 f = 32 / 35
 
+GROUP_KEY = 'rle-pad-lzf_data'
+
 
 def _make_dir(filename):
     folder = os.path.dirname(filename)
@@ -40,17 +42,22 @@ def convert(vox, eye, ray_shape):
 
 
 def _get_frustrum_voxels_path(
-        render_manager, voxel_config, out_dim, cat_id, temp):
+        manager_dir, voxel_config, out_dim, cat_id, temp):
     fn = ('temp_%s.hdf5' % cat_id) if temp else ('%s.hdf5' % cat_id)
     return os.path.join(
-        render_manager.root_dir, 'frustrum_voxels', voxel_config.voxel_id,
+        manager_dir, 'frustrum_voxels', voxel_config.voxel_id,
         'v%03d' % out_dim, fn)
 
 
 def get_frustrum_voxels_path(
-        render_manager, voxel_config, out_dim, cat_id):
+        manager_dir, voxel_config, out_dim, cat_id):
     return _get_frustrum_voxels_path(
-        render_manager, voxel_config, out_dim, cat_id, temp=False)
+        manager_dir, voxel_config, out_dim, cat_id, temp=False)
+
+
+def get_frustrum_voxels_data(manager_dir, voxel_config, out_dim, cat_id):
+    return h5py.File(get_frustrum_voxels_path(
+        manager_dir, voxel_config, out_dim, cat_id))
 
 
 def create_temp_frustrum_voxels(
@@ -62,10 +69,11 @@ def create_temp_frustrum_voxels(
     with get_camera_positions(render_manager) as camera_pos:
         eye_group = camera_pos[cat_id]
         n0 = len(eye_group)
-        dst_path = _get_frustrum_voxels_path(
-                render_manager, voxel_config, out_dim, cat_id, temp=True)
-        _make_dir(dst_path)
-        with h5py.File(dst_path, 'a') as vox_dst:
+        temp_path = _get_frustrum_voxels_path(
+                render_manager.root_dir, voxel_config, out_dim, cat_id,
+                temp=True)
+        _make_dir(temp_path)
+        with h5py.File(temp_path, 'a') as vox_dst:
             attrs = vox_dst.attrs
             prog = attrs.get('prog', 0)
             if prog == n0:
@@ -86,9 +94,10 @@ def create_temp_frustrum_voxels(
                 max_max_len = m * 3
                 assert(n == n0)
 
-                print('Creating temp rle frustrum voxel data at %s' % dst_path)
+                print(
+                    'Creating temp rle frustrum voxel data at %s' % temp_path)
                 rle_dst = vox_dst.require_dataset(
-                    'rle-pad-lzf_data', shape=(n, n_renderings, max_max_len),
+                    GROUP_KEY, shape=(n, n_renderings, max_max_len),
                     dtype=np.uint8, compression=compression)
                 bar = IncrementalBar(max=n-prog)
                 for i in range(prog, n):
@@ -109,25 +118,31 @@ def create_temp_frustrum_voxels(
                         rle_dst[i, j, :dlen] = data
                     attrs['prog'] = i
                 bar.finish()
+    return temp_path
 
 
 def create_frustrum_voxels(render_manager, voxel_config, out_dim, cat_id):
     kwargs = dict(
-        render_manager=render_manager, voxel_config=voxel_config,
+        voxel_config=voxel_config,
         out_dim=out_dim, cat_id=cat_id)
-    dst_path = _get_frustrum_voxels_path(temp=False, **kwargs)
+    dst_path = _get_frustrum_voxels_path(
+        manager_dir=render_manager.root_dir, temp=False, **kwargs)
     if os.path.isfile(dst_path):
         print('Already present.')
         return
-    create_temp_frustrum_voxels(**kwargs)
-    src_path = _get_frustrum_voxels_path(temp=True, **kwargs)
+    temp_path = create_temp_frustrum_voxels(
+        render_manager=render_manager, **kwargs)
+
+    src_path = _get_frustrum_voxels_path(
+        manager_dir=render_manager.root_dir, temp=True, **kwargs)
+    assert(src_path == temp_path)
 
     print('Shrinking data to fit.')
-    with h5py.File(src_path, 'r') as src:
+    with h5py.File(temp_path, 'r') as src:
         max_len = src.attrs['max_len']
-        src_group = src['rle-pad-lzf_data']
+        src_group = src[GROUP_KEY]
         _make_dir(dst_path)
         with h5py.File(dst_path, 'w') as dst:
             dst.create_dataset(
-                'rle-pad-lzf_data', data=src_group[:, :, :max_len],
+                GROUP_KEY, data=src_group[:, :, :max_len],
                 compression='lzf')

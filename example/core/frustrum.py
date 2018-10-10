@@ -7,7 +7,7 @@ import numpy as np
 from util3d.transform.frustrum import voxel_values_to_frustrum
 from util3d.transform.nonhom import get_eye_to_world_transform
 from shapenet.core import get_example_ids, to_cat_id
-from shapenet.core.renderings.manager import get_base_manager
+from shapenet.core.renderings.renderings_manager import get_base_manager
 from shapenet.core.voxels.config import get_config
 from shapenet.core.voxels.datasets import get_dataset as get_voxel_dataset
 

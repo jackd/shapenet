@@ -7,7 +7,7 @@ import os
 from absl import flags, app
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer('dim', default=128, help='dimension of square renderings')
+flags.DEFINE_integer('dim', default=256, help='dimension of square renderings')
 flags.DEFINE_bool(
     'turntable', default=False, help='render regular angles (default random)')
 flags.DEFINE_integer('n_renderings', default=24, help='number of renderings')
@@ -20,11 +20,11 @@ flags.DEFINE_list(
 
 
 def main(_):
-    from shapenet.core.renderings.manager import get_base_manager, \
+    from shapenet.core.renderings.renderings_manager import get_base_manager, \
         create_base_manager
-    from shapenet.core import cat_desc_to_id
+    from shapenet.core import to_cat_id
     from shapenet.core.objs import try_extract_models
-    cat_ids = [cat_desc_to_id(c) for c in FLAGS.cat]
+    cat_ids = [to_cat_id(c) for c in FLAGS.cat]
     for cat_id in cat_ids:
         try_extract_models(cat_id)
     kwargs = dict(
