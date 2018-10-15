@@ -121,7 +121,8 @@ def create_temp_frustrum_voxels(
     return temp_path
 
 
-def create_frustrum_voxels(render_manager, voxel_config, out_dim, cat_id):
+def create_frustrum_voxels(
+        render_manager, voxel_config, out_dim, cat_id, chunk_size=100):
     from progress.bar import IncrementalBar
     kwargs = dict(
         voxel_config=voxel_config,
@@ -144,8 +145,9 @@ def create_frustrum_voxels(render_manager, voxel_config, out_dim, cat_id):
             dst_dataset = dst.create_dataset(
                 GROUP_KEY, shape=(n_examples, n_renderings, max_len),
                 dtype=np.uint8, compression=compression)
-            bar = IncrementalBar(max=n_examples)
-            for i in range(n_examples):
-                dst_dataset[i] = src_group[i, :, :max_len]
+            bar = IncrementalBar(max=n_examples // chunk_size)
+            for i in range(0, n_examples, chunk_size):
+                stop = i + chunk_size
+                dst_dataset[i:stop] = src_group[i:stop, :, :max_len]
                 bar.next()
             bar.finish()
