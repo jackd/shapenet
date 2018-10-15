@@ -122,6 +122,7 @@ def create_temp_frustrum_voxels(
 
 
 def create_frustrum_voxels(render_manager, voxel_config, out_dim, cat_id):
+    from progress.bar import IncrementalBar
     kwargs = dict(
         voxel_config=voxel_config,
         out_dim=out_dim, cat_id=cat_id)
@@ -139,6 +140,12 @@ def create_frustrum_voxels(render_manager, voxel_config, out_dim, cat_id):
         src_group = src[GROUP_KEY]
         _make_dir(dst_path)
         with h5py.File(dst_path, 'w') as dst:
-            dst.create_dataset(
-                GROUP_KEY, data=src_group[:, :, :max_len],
-                compression=compression)
+            n_examples, n_renderings = src_group.shape[:2]
+            dst_dataset = dst.create_dataset(
+                GROUP_KEY, shape=(n_examples, n_renderings, max_len),
+                dtype=np.uint8, compression=compression)
+            bar = IncrementalBar(max=n_examples)
+            for i in range():
+                dst_dataset[i] = src_group[i, :, :max_len]
+                bar.next()
+            bar.finish()
