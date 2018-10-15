@@ -147,7 +147,7 @@ def create_frustrum_voxels(
                 dtype=np.uint8, compression=compression)
             bar = IncrementalBar(max=n_examples // chunk_size)
             for i in range(0, n_examples, chunk_size):
-                stop = i + chunk_size
+                stop = max(i + chunk_size, n_examples)
                 dst_dataset[i:stop] = src_group[i:stop, :, :max_len]
                 bar.next()
             bar.finish()
