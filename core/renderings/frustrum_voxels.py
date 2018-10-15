@@ -145,7 +145,7 @@ def create_frustrum_voxels(render_manager, voxel_config, out_dim, cat_id):
                 GROUP_KEY, shape=(n_examples, n_renderings, max_len),
                 dtype=np.uint8, compression=compression)
             bar = IncrementalBar(max=n_examples)
-            for i in range():
+            for i in range(n_examples):
                 dst_dataset[i] = src_group[i, :, :max_len]
                 bar.next()
             bar.finish()
