@@ -202,3 +202,47 @@ def create_frustrum_voxels(
         render_manager=render_manager, **kwargs)
     _shrink_data(temp_path, dst_path)
     # _concat_data(temp_path, dst_path)
+
+
+def fix(
+        render_manager, voxel_config, out_dim, cat_id, example_index,
+        view_index):
+    # from util3d.voxel.rle import length
+    dst_path = _get_frustrum_voxels_path(
+        manager_dir=render_manager.root_dir, code=None,
+        voxel_config=voxel_config, out_dim=out_dim, cat_id=cat_id)
+    # load src data
+    vox_manager = get_manager(
+        voxel_config, cat_id, key='rle',
+        compression=compression, shape_key='pad')
+    if not vox_manager.has_dataset():
+        raise RuntimeError('No dataset')
+    with h5py.File(vox_manager.path, 'r') as vox_src:
+        rle_src = vox_src['rle-pad-lzf_data']
+        vox = RleVoxels(
+            np.array(rle_src[example_index]),
+            (voxel_config.voxel_dim,) * 3)
+    with get_camera_positions(render_manager) as camera_pos:
+        eye_group = camera_pos[cat_id]
+        eye = eye_group[example_index, view_index]
+    # convert
+    rle_data = convert(vox, eye, (out_dim,)*3).rle_data()
+    # save
+    with h5py.File(dst_path, 'a') as dst:
+        dst_group = dst[GROUP_KEY]
+        padded_rle_data = np.zeros((dst_group.shape[2],), dtype=np.uint8)
+        padded_rle_data[:len(rle_data)] = rle_data
+        dst_group[example_index, view_index] = padded_rle_data
+
+    # with h5py.File(dst_path, 'r') as dst:
+    #     dst_group = dst[GROUP_KEY]
+    #     old_data = np.array(dst_group[example_index, view_index])
+
+    # start = 500
+    # end = 520
+    # print(rle_data[start:end])
+    # print(old_data[start:end])
+    # print(out_dim)
+    # print(out_dim**3)
+    # print(length(rle_data))
+    # print(length(old_data))
