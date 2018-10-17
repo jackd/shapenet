@@ -18,6 +18,15 @@ def _as_readable(writing_fn):
     return fp
 
 
+def _map_indices_to_ids(dataset, cat_id):
+    example_ids = get_example_ids(cat_id)
+    indices = {k: i for i, k in enumerate(example_ids)}
+    dataset = dataset.map_keys(
+        lambda k: indices[k],
+        lambda i: example_ids[i])
+    return dataset
+
+
 def _map_binvox_dataset(dataset, cat_id, id_keys=True, prefix=''):
     dataset = dataset.map(
         bv.Voxels.from_file,
@@ -221,11 +230,7 @@ class Hdf5Manager(DatasetManager):
         dataset = dataset.map(lambda x: decode(np.array(x), dims))
 
         if id_keys:
-            example_ids = get_example_ids(self.cat_id)
-            indices = {k: i for i, k in enumerate(example_ids)}
-            dataset = dataset.map_keys(
-                lambda k: indices[k],
-                lambda i: example_ids[i])
+            dataset = _map_indices_to_ids(dataset, self.cat_id)
         return dataset
 
 
@@ -245,13 +250,8 @@ class IndividualHdf5Manager(Hdf5Manager):
             lambda x: decode(np.array(x), dims),
             inverse_map_fn=encode)
 
-        if not id_keys:
-            example_ids = get_example_ids(self.cat_id)
-            indices = {k: i for i, k in enumerate(example_ids)}
-            dataset = dataset.map_keys(
-                lambda index: example_ids[index],
-                lambda example_id: indices[example_id]
-            )
+        if id_keys:
+            dataset = _map_indices_to_ids(dataset, self.cat_i)
         return dataset
 
     @property
@@ -341,6 +341,78 @@ class PaddedHdf5Manager(Hdf5Manager):
                     dst_group[i, :len(val)] = val
 
 
+class ConcatenatedHdf5Manager(Hdf5Manager):
+    @property
+    def shape_key(self):
+        return 'cat'
+
+    def get_default_src(self):
+        src = self.get_manager(
+            'hdf5', encoder=self.encoder, compression=self.compression)
+        if src.has_dataset():
+            return src
+        for compression in ('lzf', 'gzip', None):
+            if compression != self.compression:
+                src = self.get_manager(
+                    'hdf5', encoder=self.encoder, compression=compression)
+                if src.has_dataset():
+                    return src
+
+        return super(PaddedHdf5Manager, self).get_default_src()
+
+    def create_from(self, src=None, overwrite=False):
+        import h5py
+        from progress.bar import IncrementalBar
+        from util3d.voxel.binvox import rle
+        if src is None:
+            src = self.get_default_src()
+        with src.get_dataset(id_keys=True) as src_ds:
+            example_ids = get_example_ids(self.cat_id)
+            n = len(example_ids)
+            values = []
+            print('Getting jagged encodings for %s...' % self.format_key)
+            bar = IncrementalBar(max=n)
+            encode = self.encoder.to_numpy
+            starts = np.empty(shape=(n+1,), dtype=np.int32)
+            curr = 0
+            starts[0] = curr
+            for i, example_id in enumerate(example_ids):
+                data = src_ds[example_id]
+                val = encode(data)
+                val = rle.remove_length_padding(val)
+                curr += len(val)
+                starts[i+1] = curr
+                values.append(val)
+                bar.next()
+            bar.finish()
+            print('Saving...')
+            path = self.path
+            dn = os.path.dirname(path)
+            if not os.path.isdir(dn):
+                os.makedirs(dn)
+            # if overwrite and os.path.isfile(path):
+            #     os.remove(path)
+            with h5py.File(path, mode='w' if overwrite else 'a') as dst:
+                dst.create_dataset(
+                    'values', data=np.concatenate(values, axis=0),
+                    compression=self.compression)
+                dst.create_dataset('starts', data=starts, compression=None)
+
+    def _get_dataset(self, id_keys=True, mode='r'):
+        from .concat_ds import ConcatenatedDataset
+        dataset = ConcatenatedDataset(
+            self.path, starts_key='starts', values_key='values')
+
+        dims = (self.config.voxel_dim,) * 3
+        decode = self.encoder.from_numpy
+        dataset = dataset.map(
+            lambda x: decode(np.array(x), dims))
+
+        if id_keys:
+            dataset = _map_indices_to_ids(dataset, self.cat_i)
+        return dataset
+
+
 class Encoder(object):
     def to_numpy(self, voxels):
         raise NotImplementedError('Abstract method')
@@ -418,7 +490,8 @@ _load_fns = {
 _shape_fns = {
     'pad': PaddedHdf5Manager,
     'jag': JaggedHdf5Manager,
-    'ind': IndividualHdf5Manager
+    'ind': IndividualHdf5Manager,
+    'cat': ConcatenatedHdf5Manager,
 }
 
 

@@ -42,8 +42,9 @@ def convert(vox, eye, ray_shape):
 
 
 def _get_frustrum_voxels_path(
-        manager_dir, voxel_config, out_dim, cat_id, temp):
-    fn = ('temp_%s.hdf5' % cat_id) if temp else ('%s.hdf5' % cat_id)
+        manager_dir, voxel_config, out_dim, cat_id, code=None):
+    fn = ('%s.hdf5' % cat_id) if code is None else (
+        '%s_%s.hdf5' % (code, cat_id))
     return os.path.join(
         manager_dir, 'frustrum_voxels', voxel_config.voxel_id,
         'v%03d' % out_dim, fn)
@@ -52,7 +53,7 @@ def _get_frustrum_voxels_path(
 def get_frustrum_voxels_path(
         manager_dir, voxel_config, out_dim, cat_id):
     return _get_frustrum_voxels_path(
-        manager_dir, voxel_config, out_dim, cat_id, temp=False)
+        manager_dir, voxel_config, out_dim, cat_id)
 
 
 def get_frustrum_voxels_data(manager_dir, voxel_config, out_dim, cat_id):
@@ -71,7 +72,7 @@ def create_temp_frustrum_voxels(
         n0 = len(eye_group)
         temp_path = _get_frustrum_voxels_path(
                 render_manager.root_dir, voxel_config, out_dim, cat_id,
-                temp=True)
+                code='temp')
         _make_dir(temp_path)
         with h5py.File(temp_path, 'a') as vox_dst:
             attrs = vox_dst.attrs
@@ -121,20 +122,8 @@ def create_temp_frustrum_voxels(
     return temp_path
 
 
-def create_frustrum_voxels(
-        render_manager, voxel_config, out_dim, cat_id, chunk_size=100):
+def _shrink_data(temp_path, dst_path, chunk_size=100):
     from progress.bar import IncrementalBar
-    kwargs = dict(
-        voxel_config=voxel_config,
-        out_dim=out_dim, cat_id=cat_id)
-    dst_path = _get_frustrum_voxels_path(
-        manager_dir=render_manager.root_dir, temp=False, **kwargs)
-    if os.path.isfile(dst_path):
-        print('Already present.')
-        return
-    temp_path = create_temp_frustrum_voxels(
-        render_manager=render_manager, **kwargs)
-
     print('Shrinking data to fit.')
     with h5py.File(temp_path, 'r') as src:
         max_len = src.attrs['max_len']
@@ -151,3 +140,65 @@ def create_frustrum_voxels(
                 dst_dataset[i:stop] = src_group[i:stop, :, :max_len]
                 bar.next()
             bar.finish()
+
+
+def _concat_data(temp_path, dst_path):
+    from progress.bar import IncrementalBar
+    from util3d.voxel import rle
+    print('Concatenating data')
+    with h5py.File(temp_path, 'r') as src:
+        src_group = src[GROUP_KEY]
+        _make_dir(dst_path)
+        with h5py.File(dst_path, 'w') as dst:
+            n_examples, n_renderings = src_group.shape[:2]
+            n_total = n_examples * n_renderings
+            starts = np.empty(dtype=np.int64, shape=(n_total+1,))
+            print('Computing starts...')
+            k = 1
+            start = 0
+            starts[0] = start
+            bar = IncrementalBar(max=n_examples)
+            for i in range(n_examples):
+                bar.next()
+                example_data = np.array(src_group[i])
+                for j in range(n_renderings):
+                    data = rle.remove_length_padding(example_data[j])
+                    start += len(data)
+                    starts[k] = start
+                    k += 1
+            bar.finish()
+            assert(k == n_total+1)
+            dst.create_dataset('starts', data=starts)
+            values = dst.create_dataset(
+                'values', dtype=np.uint8, shape=(starts[-1],))
+
+            k = 0
+            print('Transfering data...')
+            bar = IncrementalBar(max=n_examples)
+            for i in range(n_examples):
+                example_data = np.array(src_group[i])
+                bar.next()
+                for j in range(n_renderings):
+                    values[starts[k]: starts[k+1]] = rle.remove_length_padding(
+                        example_data[j])
+                    k += 1
+            bar.finish()
+            assert(k == n_total)
+
+
+def create_frustrum_voxels(
+        render_manager, voxel_config, out_dim, cat_id):
+    kwargs = dict(
+        voxel_config=voxel_config,
+        out_dim=out_dim, cat_id=cat_id)
+    # dst_path = _get_frustrum_voxels_path(
+    #     manager_dir=render_manager.root_dir, code='cat', **kwargs)
+    dst_path = _get_frustrum_voxels_path(
+        manager_dir=render_manager.root_dir, code=None, **kwargs)
+    if os.path.isfile(dst_path):
+        print('Already present.')
+        return
+    temp_path = create_temp_frustrum_voxels(
+        render_manager=render_manager, **kwargs)
+    _shrink_data(temp_path, dst_path)
+    # _concat_data(temp_path, dst_path)

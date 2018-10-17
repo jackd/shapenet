@@ -37,8 +37,8 @@ flags.DEFINE_string(
     'compression', default=None, help='one of [None, "gzip", "lzf"]')
 
 flags.DEFINE_string(
-    'src_shape', default=None, help='one of ["pad", "jag", "ind"]')
-flags.DEFINE_boolean(
+    'src_shape', default=None, help='one of ["pad", "jag", "ind", "cat"]')
+flags.DEFINE_string(
     'src_compression', default=None, help='one of [None, "gzip", "lzf"]')
 flags.DEFINE_string(
     'src_format', default=None,
@@ -74,7 +74,7 @@ def main(_):
     src_kwargs = dict()
     safe_update(
         src_kwargs, key=FLAGS.src_format, compression=FLAGS.src_compression,
-        shape=FLAGS.src_shape)
+        shape_key=FLAGS.src_shape)
 
     for cat in FLAGS.cat:
         dst = get_manager(cat_id=to_cat_id(cat), **kwargs)
