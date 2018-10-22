@@ -237,6 +237,8 @@ def fix(
     # with h5py.File(dst_path, 'r') as dst:
     #     dst_group = dst[GROUP_KEY]
     #     old_data = np.array(dst_group[example_index, view_index])
+    #     print(length(old_data))
+    #     print(length(rle_data))
 
     # start = 500
     # end = 520

@@ -8,7 +8,8 @@ from shapenet.core.renderings.renderings_manager import get_base_manager
 from shapenet.core.voxels.config import get_config
 
 # found error with this guy - not sure why...
-cat_id, example_index, view_index = '02933112', 1571, 11
+# cat_id, example_index, view_index = '02933112', 1571, 11
+cat_id, example_index, view_index = '03001627', 6777, 1
 
 out_dim = 128
 src_dim = 256

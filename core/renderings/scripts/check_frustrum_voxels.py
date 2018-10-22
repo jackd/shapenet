@@ -40,8 +40,8 @@ def main(_):
     expected_length = FLAGS.voxel_dim**3
 
     for ci, cat in enumerate(cats):
-        if ci < 3:
-            continue
+        # if ci >= 3:
+        #     continue
         cat_id = to_cat_id(cat)
         print('Checking cat %s: %d / %d' % (cat_id, ci+1, len(cats)))
         with get_frustrum_voxels_data(
@@ -55,6 +55,7 @@ def main(_):
                 di = np.array(data[i])
                 for j in range(nr):
                     actual_length = rle.length(di[j])
+                    # actual_length = len(rle.rle_to_dense(di[j]))
                     if actual_length != expected_length:
                         raise ValueError(
                             'Incorrect length at %s, %d, %d\n'
