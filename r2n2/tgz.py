@@ -9,11 +9,17 @@ from .path import data_dir, get_renderings_subpath, get_binvox_subpath
 
 
 _logger = logging.getLogger(__name__)
+
 renderings_path = os.path.join(data_dir, 'ShapeNetRendering.tgz')
+
+
 binvox_path = os.path.join(data_dir, 'ShapeNetVox32.tgz')
 
-binvox_url = 'ftp://cs.stanford.edu/cs/cvgl/ShapeNetVox32.tgz'
-renderings_url = 'ftp://cs.stanford.edu/cs/cvgl/ShapeNetRendering.tgz'
+
+# binvox_url = 'ftp://cs.stanford.edu/cs/cvgl/ShapeNetVox32.tgz'
+# renderings_url = 'ftp://cs.stanford.edu/cs/cvgl/ShapeNetRendering.tgz'
+binvox_url = 'http://cvgl.stanford.edu/data2/ShapeNetVox32.tgz'
+renderings_url = 'http://cvgl.stanford.edu/data2/ShapeNetRendering.tgz'
 
 
 class ArchiveManager(object):
@@ -78,12 +84,17 @@ class ArchiveManager(object):
         else:
             url = self.url
             _logger.info('Downloading from %s' % url)
-            wget.download(self.url, out=path)
+            try:
+                wget.download(url, out=path)
+            except IOError:
+                print('Problem downloading from %s' % url)
+                raise
 
 
 class BinvoxManager(ArchiveManager):
     def __init__(self):
-        super(BinvoxManager, self).__init__(binvox_url, binvox_path, 'r:gz')
+        super(BinvoxManager, self).__init__(
+            binvox_url, binvox_path, 'r:gz')
         self._cat_ids = None
         self._example_ids = {}
 

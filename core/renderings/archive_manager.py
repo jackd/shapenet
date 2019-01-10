@@ -48,12 +48,11 @@ class ArchiveManager(object):
 
         if self._base_only:
             example_ids = get_example_ids(cat_id)
-            n_renderings = manager.get_render_params()['n_renderings']
+            n_views = manager.get_view_params()['n_views']
 
             for example_id in example_ids:
-                key = (cat_id, example_id)
-                for i in range(n_renderings):
-                    yield manager.get_rendering_path(key, i)
+                for i in range(n_views):
+                    yield manager.get_rendering_path(cat_id, example_id, i)
         else:
             cat_dir = manager.get_cat_dir(cat_id)
             for r, _, fns in os.walk(cat_dir):
@@ -65,7 +64,7 @@ class ArchiveManager(object):
         cat_id = self.cat_id
         if self._base_only:
             return len(get_example_ids(self.cat_id)) \
-                * manager.get_render_params()['n_renderings']
+                * manager.get_view_params()['n_views']
         else:
             cat_dir = manager.get_cat_dir(cat_id)
             c = 0
@@ -93,6 +92,17 @@ class ArchiveManager(object):
             if name not in names:
                 fn(archive, path, name)
         bar.finish()
+
+    def unpack(self):
+        manager = self._renderings_manager
+        cat_id = self._cat_id
+        archive = self.archive
+
+        cat_dir = manager.get_cat_dir(cat_id)
+        base_folder, rest = os.path.split(cat_dir)
+        assert(rest == cat_id)
+        print('Extracting files at %s' % archive.path)
+        archive.extractall(base_folder)
 
     def check(self):
         def fn(archive, src_path, name):

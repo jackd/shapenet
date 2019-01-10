@@ -144,26 +144,50 @@ def remove_obj(objs):
 #     return b_empty
 
 
-def main(manager_dir, cat_id, example_ids):
-    from shapenet.core.renderings.renderings_manager import \
-        RenderableManagerBase
-    manager = RenderableManagerBase(manager_dir, [cat_id])
+def load_camera_positions(path):
+    import numpy as np
+    if path.endswith('.txt'):
+        return np.loadtxt(path)
+    elif path.endswith('.npy'):
+        return np.load(path)
+    else:
+        raise IOError(
+            'Unrecognized extension for camera_positions %s' % path)
 
-    keys = tuple(manager.needs_rendering_keys())
-    n = len(keys)
 
-    if n == 0:
-        print('No renderable keys - skipping.')
-        return
-    params = manager.get_render_params()
+def load_render_params(path):
+    import json
+    if path is None:
+        return {}
+    else:
+        assert(isinstance(path, str))
+        assert(path.endswith('.json'))
+        with open(path, 'r') as fp:
+            return json.load(fp)
 
-    shape = params.get('shape', [128, 128])
-    scale = params.get('scale', 1)
-    remove_doubles = params.get('remove_doubles', False)
-    edge_split = params.get('edge_split', False)
+
+def main(render_params, out_dir, filename_format, obj_path, camera_positions):
+    render_params = load_render_params(render_params)
+    if filename_format.endswith('.png'):
+        filename_format = filename_format[:-4]
+
+    assert(isinstance(obj_path, str))
+    assert(obj_path.endswith('.obj'))
+    assert(os.path.isfile(obj_path))
+
+    camera_positions = load_camera_positions(camera_positions)
+
+    shape = render_params.get('shape', [128, 128])
+    scale = render_params.get('scale', 1)
+    remove_doubles = render_params.get('remove_doubles', False)
+    edge_split = render_params.get('edge_split', False)
+    f = render_params.get('f', 32 / 35)
+    if f != 32 / 35:
+        raise NotImplementedError(
+            'Only default focal length of 32 / 35 implemented')
 
     invariants, depthFileOutput, normalFileOutput, albedoFileOutput = setup(
-        params.get('depth_scale', 1.4))
+        render_params.get('depth_scale', 1.4))
     empty = bpy.data.objects.new("Empty", None)
     empty.location = (0, 0, 0)
     invariants.add(empty)
@@ -190,36 +214,27 @@ def main(manager_dir, cat_id, example_ids):
         cam_constraint.up_axis = 'UP_Y'
         cam_constraint.target = empty
 
-    def render(key):
-        obj_path = manager.get_obj_path(key)
-        eyes = manager.get_camera_positions(key)
-        obj = load_obj(obj_path, scale, remove_doubles, edge_split, invariants)
-        # set output format to png
-        scene.render.image_settings.file_format = 'PNG'
 
-        for output_node in [
-                depthFileOutput, normalFileOutput, albedoFileOutput]:
-            output_node.base_path = ''
+    eyes = camera_positions
+    load_obj(obj_path, scale, remove_doubles, edge_split, invariants)
+    # set output format to png
+    scene.render.image_settings.file_format = 'PNG'
 
-        for i, eye in enumerate(eyes):
-            set_camera(eye)
-            base_path = manager.get_rendering_path(key, i)
-            folder = os.path.dirname(base_path)
-            if not os.path.isdir(folder):
-                os.makedirs(folder)
-            if base_path.endswith('.png'):
-                base_path = base_path[:-4]
-            scene.render.filepath = base_path
-            for k, v in outputs.items():
-                v.file_slots[0].path = \
-                    manager.get_rendering_path(key, i, k)
-            bpy.ops.render.render(write_still=True)  # render still
+    for output_node in [
+            depthFileOutput, normalFileOutput, albedoFileOutput]:
+        output_node.base_path = ''
 
-        remove_obj(obj)
+    if not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
 
-    print('Rendering %d examples for manager at %s' % (n, manager_dir))
-    for example_id in example_ids:
-        render((cat_id, example_id))
+    for i, eye in enumerate(eyes):
+        set_camera(eye)
+        base_path = os.path.join(out_dir, filename_format % (i, ''))
+        scene.render.filepath = base_path
+        for k, v in outputs.items():
+            filename = filename_format % (i, k)
+            v.file_slots[0].path = os.path.join(out_dir, filename)
+        bpy.ops.render.render(write_still=True)  # render still
 
 
 def get_args():
@@ -227,9 +242,16 @@ def get_args():
     import sys
     parser = argparse.ArgumentParser(
         description='Renders given obj file by rotation a camera around it.')
-    parser.add_argument('--manager_dir', type=str, help='directory of manager')
-    parser.add_argument('--cat_id', type=str)
-    parser.add_argument('--example_ids', type=str, nargs='+')
+    parser.add_argument(
+        '--render_params', type=str, help='path to json render_params file')
+    parser.add_argument('--out_dir', type=str, help='output directory')
+    parser.add_argument(
+        '--filename_format', type=str, default='r%03%s',
+        help='output directory')
+    parser.add_argument('--obj', type=str, help='path to obj file')
+    parser.add_argument(
+        '--camera_positions', type=str,
+        help='path to camera_positions npy file')
 
     argv = sys.argv[sys.argv.index("--") + 1:]
     args = parser.parse_args(argv)
@@ -238,4 +260,6 @@ def get_args():
 
 
 args = get_args()
-main(args.manager_dir, args.cat_id, args.example_ids)
+main(
+    args.render_params, args.out_dir, args.filename_format, args.obj,
+    args.camera_positions)

@@ -1,3 +1,8 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+
 class LengthedGenerator(object):
     """Generator with an efficient, fixed length."""
     def __init__(self, gen, gen_len):

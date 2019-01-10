@@ -53,7 +53,7 @@ def buffer_to_numpy(fp, dtype=np.uint8):
 def _ensure_extracted():
     if not os.path.isdir(path.get_renderings_path()):
         with tgz.RenderingsManager() as rm:
-            rm.extractall()
+            rm.extract()
 
 
 def get_cat_ids():

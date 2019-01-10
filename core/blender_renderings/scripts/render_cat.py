@@ -1,8 +1,14 @@
 #!/usr/bin/python
 """Create uncompressed renderings."""
+
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 import shutil
 import subprocess
+import tempfile
 from datetime import datetime
 from shapenet.path import get_temp_dir
 from shapenet.core import get_example_ids, cat_desc_to_id
@@ -69,21 +75,23 @@ def render_example(
     if paths is None:
         return False
 
-    with get_temp_dir() as tmp:
-        for f in paths:
-            zip_file.extract(f, tmp)
-        # for f in zip_file.namelist():
-        #     if f.startswith(subdir):
-        #         zip_file.extract(f, tmp)
-        subpath = get_obj_subpath(cat_id, example_id)
-        obj_path = os.path.join(tmp, subpath)
-        if verbose:
-            print('')
-            print(datetime.now())
-            print('Rendering %s' % example_id)
-        render_obj(
-            config, obj_path, cat_dir, call_kwargs, blender_path=blender_path)
-        return True
+    tmp = tempfile.mkdtemp(prefix='shapenet')
+
+    for f in paths:
+        zip_file.extract(f, tmp)
+    # for f in zip_file.namelist():
+    #     if f.startswith(subdir):
+    #         zip_file.extract(f, tmp)
+    subpath = get_obj_subpath(cat_id, example_id)
+    obj_path = os.path.join(tmp, subpath)
+    if verbose:
+        print('')
+        print(datetime.now())
+        print('Rendering %s' % example_id)
+    render_obj(
+        config, obj_path, cat_dir, call_kwargs, blender_path=blender_path)
+    shutil.rmtree(tmp)
+    return True
 
 
 def render_cat(

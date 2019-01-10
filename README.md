@@ -6,21 +6,27 @@ Dependencies:
 
 # Setup
 1. Install pip dependencies
-```
+```bash
 pip install numpy h5py progress wget
 ```
 2. Clone relevant repositories
-```
+```bash
 cd /path/to/parent_dir
 git clone https://github.com/jackd/dids.git
 git clone https://github.com/jackd/util3d.git
 git clone https://github.com/jackd/shapenet.git
 ```
 3. Add parent directory to `PYTHONPATH`
-```
+```bash
 export PYTHONPATH=$PYTHONPATH:/path/to/parent_dir
 ```
 Consider adding this to your `~/.bashrc` file if you do not want to call it for each new terminal.
+4. Copy `default_config.yaml` to `config.yaml` and make changes depending on where you have data saved etc. See comments in `default_config.yaml` for more.
+```bash
+cd shapenet
+cp default_config.yaml config.yaml
+gedit config.yaml  # make changes
+```
 
 ## Core Dataset
 We cannot provide data for the core dataset - see the [dataset website](https://www.shapenet.org/) for access.

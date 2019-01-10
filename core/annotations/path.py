@@ -1,16 +1,14 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 import zipfile
 
 
 def get_annot_dir():
-    key = 'SHAPENET_CORE_ANNOTATIONS_PATH'
-    if key in os.environ:
-        dataset_dir = os.environ[key]
-        if not os.path.isdir(dataset_dir):
-            raise Exception('%s directory does not exist' % key)
-        return dataset_dir
-    else:
-        raise Exception('%s environment variable not set.' % key)
+    from ...config import config
+    return config['core_annotations_dir']
 
 
 annot_dir = get_annot_dir()

@@ -7,21 +7,25 @@ import numpy as np
 from util3d.transform.frustrum import voxel_values_to_frustrum
 from util3d.transform.nonhom import get_eye_to_world_transform
 from shapenet.core import get_example_ids, to_cat_id
-from shapenet.core.renderings.renderings_manager import get_base_manager
+from shapenet.core.renderings.renderings_manager import \
+    get_base_manager as get_image_manager
+from shapenet.core.views.base import get_base_manager as get_view_manager
 from shapenet.core.voxels.config import get_config
 from shapenet.core.voxels.datasets import get_dataset as get_voxel_dataset
 
 
-cat = 'plane'
-voxel_dim = 256
-ray_shape = (256,)*3
+cat = 'telephone'
+voxel_dim = 32
+ray_shape = (32,)*3
 view_index = 0
+
 cat_id = to_cat_id(cat)
 config = get_config(voxel_dim, alt=False).filled('orthographic')
 voxel_dataset = get_voxel_dataset(
     config, cat_id, id_keys=True, key='rle', compression='lzf')
-image_manager = get_base_manager(dim=256)
-f = 32 / 35
+image_manager = get_image_manager(dim=128)
+view_manager = get_view_manager()
+f = view_manager.get_view_params()['f']
 
 
 def vis(dense_data, image_path, frust):

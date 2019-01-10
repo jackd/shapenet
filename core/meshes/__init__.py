@@ -52,7 +52,7 @@ def get_mesh_dataset(cat_id, mode='r'):
     return manager.get_saving_dataset(mode)
 
 
-__all__ = [
-    get_mesh_dataset,
-    generate_mesh_data,
-]
+# __all__ = [
+#     get_mesh_dataset,
+#     generate_mesh_data,
+# ]

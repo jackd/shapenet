@@ -4,7 +4,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from shapenet.r2n2.binvox import BinvoxManager
+from shapenet.r2n2.tgz import BinvoxManager
 
 
 def vis(vox):

@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 from . import path
 
 _cat_descs = {
@@ -77,23 +76,22 @@ _cat_ids = {v: k for k, v in _cat_descs.items()}
 
 def get_test_train_split():
     import os
-    from path import get_test_train_split_path
-    path = get_test_train_split_path()
-    if not os.path.isfile(path):
+    split_path = path.get_test_train_split_path()
+    if not os.path.isfile(split_path):
         import wget
         url = ('http://shapenet.cs.stanford.edu/shapenet/obj-zip/SHREC16/'
                'all.csv')
-        wget.download(url, path)
-        if not os.path.isfile(path):
+        wget.download(url, split_path)
+        if not os.path.isfile(split_path):
             raise IOError('Failed to download test/train split from %s' % url)
 
     split = {k: {'train': [], 'test': [], 'val': []} for k in get_cat_ids()}
-    with open(path, 'r') as fp:
+    with open(split_path, 'r') as fp:
         fp.readline()
         for line in fp.readlines():
             line = line.rstrip()
             if len(line) > 0:
-                _, cat_id, sub_id, example_id, ds = line.split(',')
+                _, cat_id, __, example_id, ds = line.split(',')
                 split[cat_id][ds].append(example_id)
     return split
 
@@ -151,10 +149,10 @@ def get_old_example_ids(cat_id):
     return ids
 
 
-__all__ = [
-    path,
-    get_cat_ids,
-    get_example_ids,
-    cat_id_to_desc,
-    cat_desc_to_id,
-]
+# __all__ = [
+#     path,
+#     get_cat_ids,
+#     get_example_ids,
+#     cat_id_to_desc,
+#     cat_desc_to_id,
+# ]

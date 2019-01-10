@@ -3,12 +3,9 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+from .. import path
 
-root_dir = os.path.realpath(os.path.dirname(__file__))
-data_dir = os.path.join(root_dir, '_data')
-
-if not os.path.isdir(data_dir):
-    os.makedirs(data_dir)
+data_dir = path.get_data_dir('r2n2')
 
 
 def get_binvox_subpath(cat_id=None, example_id=None):

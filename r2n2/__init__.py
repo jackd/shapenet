@@ -29,8 +29,8 @@ def get_cat_ids():
     return tuple(cat_desc_to_id(desc) for desc in cat_descs)
 
 
-__all__ = [
-    get_cat_ids,
-    get_cat_descs,
-    cat_descs,
-]
+# __all__ = [
+#     get_cat_ids,
+#     get_cat_descs,
+#     cat_descs,
+# ]

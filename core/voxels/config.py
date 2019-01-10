@@ -17,12 +17,21 @@ class VoxelConfig(object):
         self._aw = aw
         self._c = c
         self._v = v
-        self._voxel_id = path.get_voxel_id(
+        self._voxel_id = get_voxel_id(
             voxel_dim, exact=exact, dc=dc, aw=aw, c=c, v=v)
 
     def filled(self, fill_alg=None):
-        from .filled import FilledVoxelConfig
-        return FilledVoxelConfig(self, fill_alg)
+        if fill_alg is None:
+            return self
+        else:
+            from .filled import FilledVoxelConfig
+            return FilledVoxelConfig(self, fill_alg)
+
+    @staticmethod
+    def from_id(voxel_id):
+        kwargs = parse_voxel_id(voxel_id)
+        fill_alg = kwargs.pop('fill_alg', None)
+        return VoxelConfig(**kwargs).filled(fill_alg)
 
     @property
     def voxel_dim(self):
@@ -117,3 +126,80 @@ def get_config(voxel_dim, alt=False):
         return get_alt_config(voxel_dim)
     else:
         return get_base_config(voxel_dim)
+
+
+def get_voxel_id(
+        voxel_dim=32, exact=True, dc=True, aw=True, c=False, v=False,
+        fill=None):
+    def bstr(b):
+        return 't' if b else 'f'
+    voxel_id = 'd%03d%s%s%s' % (voxel_dim, bstr(exact), bstr(dc), bstr(aw))
+    if c:
+        voxel_id = '%sc' % voxel_id
+    if v:
+        voxel_id = '%sv' % voxel_id
+    if fill is not None:
+        voxel_id = '%s_%s' % (voxel_id, fill)
+    return voxel_id
+
+
+default_voxel_id = get_voxel_id()
+
+
+def split_id(voxel_id):
+    parts = voxel_id.split('_')
+    if len(parts) == 2:
+        voxel_id, fill_alg = parts
+    else:
+        assert(len(parts) == 1)
+        fill_alg = None
+    return voxel_id, fill_alg
+
+
+def parse_voxel_id(voxel_id):
+    """Inverse function to `get_voxel_id`."""
+    voxel_id, fill_alg = split_id(voxel_id)
+    if not is_valid_voxel_id(voxel_id):
+        raise ValueError('voxel_id %s not valid.' % voxel_id)
+    kwargs = dict(
+        voxel_dim=int(voxel_id[1:4]),
+        exact=voxel_id[4] == 't',
+        dc=voxel_id[5] == 't',
+        aw=voxel_id[6] == 't',
+    )
+    rest = voxel_id[7:]
+    if rest.startswith('c'):
+        rest = rest[1:]
+        kwargs['c'] = True
+    if rest.startswith('v'):
+        kwargs['v'] = True
+        rest = rest[1:]
+    assert(rest == '')
+    if fill_alg is not None:
+        kwargs['fill_alg'] = fill_alg
+    return kwargs
+
+
+def is_valid_voxel_id(voxel_id):
+    voxel_id, fill_alg = split_id(voxel_id)
+    if fill_alg is not None:
+        from . import filled
+        try:
+            filled.check_valid_fill_alg(fill_alg)
+        except ValueError:
+            return False
+
+    nc = len(voxel_id)
+    if not isinstance(voxel_id, (str, unicode)) or 7 <= nc <= 9:
+        return False
+    if nc == 9 and nc[-2:] != 'cv':
+        return False
+    if nc == 8 and nc[-1] not in ('c', 'v'):
+        return False
+    try:
+        int3 = int(voxel_id[1:4])
+    except ValueError:
+        return False
+    if int3 <= 0:
+        return False
+    return voxel_id[0] == 'd' and all(s in ('t', 'f') for s in voxel_id[4:])

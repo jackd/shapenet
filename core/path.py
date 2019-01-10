@@ -4,40 +4,26 @@ from __future__ import print_function
 
 import os
 import zipfile
-
-
-_core_dir = os.path.realpath(os.path.dirname(__file__))
-_ids_dir = os.path.join(_core_dir, '_ids')
+from .. import config
 
 
 def get_core_dir():
-    key = 'SHAPENET_CORE_PATH'
-    if key in os.environ:
-        dataset_dir = os.environ[key]
-        if not os.path.isdir(dataset_dir):
-            raise Exception('%s directory does not exist' % key)
-        return dataset_dir
-    else:
-        raise Exception('%s environment variable not set.' % key)
+    return config.config['core_dir']
+
+
+def get_data_dir(*args):
+    from .. import path
+    return path.get_data_dir('core', *args)
+
+
+_ids_dir = get_data_dir('ids')
 
 
 def get_extracted_core_dir(cat_id=None):
-    base = os.environ.get('SHAPENET_EXTRACTION_PATH', '/tmp/shapenet')
+    args = 'extracted',
     if cat_id is not None:
-        base = os.path.join(base, cat_id)
-    return base
-
-
-def get_cat_ids():
-    from . import get_cat_ids
-    print('Warning: using deprecated `get_cat_ids` in path. Use shapenet.core'
-          ' version instead.')
-    return get_cat_ids()
-    # ids = list(set(
-    #     [k[:-4] for k in os.listdir(get_core_dir()) if len(k) > 4 and
-    #      k[-4:] == '.zip']))
-    # ids.sort()
-    # return tuple(ids)
+        args = args + (cat_id,)
+    return get_data_dir(*args)
 
 
 def get_csv_path(cat_id):

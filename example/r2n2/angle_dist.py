@@ -24,7 +24,7 @@ el = np.concatenate(el, axis=0).flatten()
 
 def vis(az, el):
     import matplotlib.pyplot as plt
-    fig, (ax0, ax1) = plt.subplots(1, 2)
+    _, (ax0, ax1) = plt.subplots(1, 2)
     ax0.hist(az, bins=36)
     ax1.hist(el, bins=36)
     plt.show()

@@ -9,6 +9,8 @@ import numpy as np
 from util3d.voxel import binvox as bv
 from shapenet.core import get_example_ids
 
+GROUP_KEY = 'voxels'
+
 
 def _as_readable(writing_fn):
     import io
@@ -179,6 +181,21 @@ class Hdf5Manager(DatasetManager):
         self._compression = compression
         self._encoder = as_encoder(encoder)
 
+    @staticmethod
+    def from_group(self, path):
+        import h5py
+        from .config import VoxelConfig
+        with h5py.File(path, 'r') as fp:
+            attrs = fp.attrs
+            config = VoxelConfig.from_id(attrs['voxel_id'])
+            cat_id = attrs['cat_id']
+            encoder = attrs['encoder']
+            compression = attrs['compression']
+            shape_key = attrs['shape_key']
+        return get_hdf5_manager(
+            config, cat_id, encoder=encoder, shape_key=shape_key,
+            compression=compression)
+
     def get_default_src(self):
         src = self.get_manager('zip')
         if not src.has_dataset():
@@ -190,6 +207,10 @@ class Hdf5Manager(DatasetManager):
         return self._encoder
 
     @property
+    def encoder_key(self):
+        return self.encoder.key
+
+    @property
     def compression(self):
         return self._compression
 
@@ -197,12 +218,28 @@ class Hdf5Manager(DatasetManager):
     def shape_key(self):
         raise NotImplementedError('Abstract property')
 
+    def create_from(self, src=None, overwrite=False):
+        import h5py
+        super(Hdf5Manager, self).create_from(src, overwrite)
+        with h5py.File(self.path, 'a') as fp:
+            attrs = fp.attrs
+            for k, v in (
+                    ('compression', self.compression),
+                    ('shape_key', self.shape_key),
+                    ('encoding', self.encoder_key),
+                    ('voxel_id', self.config.voxel_id),
+                    ('cat_id', self.cat_id)):
+                if k in attrs and not overwrite:
+                    assert(attrs[k] == v)
+                else:
+                    attrs[k] = v
+
     @property
     def format_key(self):
         comp = self.compression
         if comp is None:
             comp = 'raw'
-        return '%s-%s-%s' % (self.encoder.key, self.shape_key, comp)
+        return '%s-%s-%s' % (self.encoder_key, self.shape_key, comp)
 
     def delete(self):
         print('Deleting %s hdf5 data' % self.format_key)
@@ -217,14 +254,10 @@ class Hdf5Manager(DatasetManager):
     def has_dataset(self):
         return os.path.isfile(self.path)
 
-    @property
-    def _group_name(self):
-        return '%s_data' % self.format_key
-
     def _get_dataset(self, id_keys=True, mode='r'):
         from dids.file_io.hdf5 import Hdf5Dataset, Hdf5ArrayDataset
         parent = Hdf5Dataset(self.path, mode=mode)
-        dataset = Hdf5ArrayDataset(parent, self._group_name)
+        dataset = Hdf5ArrayDataset(parent, GROUP_KEY, dtype=np.uint8)
         dims = (self.config.voxel_dim,) * 3
         decode = self.encoder.from_numpy
         dataset = dataset.map(lambda x: decode(np.array(x), dims))
@@ -235,6 +268,12 @@ class Hdf5Manager(DatasetManager):
 
 
 class IndividualHdf5Manager(Hdf5Manager):
+    """
+    Data stored in individual `h5py.Dataset`s.
+
+    Not great for large numbers of entries.
+    """
+
     @property
     def shape_key(self):
         return 'ind'
@@ -251,15 +290,17 @@ class IndividualHdf5Manager(Hdf5Manager):
             inverse_map_fn=encode)
 
         if id_keys:
-            dataset = _map_indices_to_ids(dataset, self.cat_i)
+            dataset = _map_indices_to_ids(dataset, self.cat_id)
         return dataset
-
-    @property
-    def _group_name(self):
-        raise NotImplementedError('No group')
 
 
 class JaggedHdf5Manager(Hdf5Manager):
+    """
+    Saves data in a jagged array (h5py.special_dtype).
+
+    Compression is very inefficient and reading slow, so not advised to be
+    used - left in for future experimentation if desired.
+    """
 
     def create_from(self, src=None, overwrite=False):
         import h5py
@@ -272,7 +313,7 @@ class JaggedHdf5Manager(Hdf5Manager):
             dtype = h5py.special_dtype(vlen=np.dtype(np.uint8))
             with h5py.File(self.path, 'a') as dst:
                 dst = dst.require_dataset(
-                    self._group_name, dtype=dtype, shape=(n,),
+                    GROUP_KEY, dtype=dtype, shape=(n,),
                     compression=self.compression)
                 print('Saving data to %s' % self.path)
                 bar = IncrementalBar(max=n)
@@ -289,6 +330,12 @@ class JaggedHdf5Manager(Hdf5Manager):
 
 
 class PaddedHdf5Manager(Hdf5Manager):
+    """
+    Saves data in a rectangular array with size (n_voxels, max_encoded_length).
+
+    Zero-pads shorter sequences. Compression good/fast.
+    """
+
     @property
     def shape_key(self):
         return 'pad'
@@ -334,7 +381,7 @@ class PaddedHdf5Manager(Hdf5Manager):
             #     os.remove(path)
             with h5py.File(path, mode='w' if overwrite else 'a') as dst:
                 dst_group = dst.require_dataset(
-                    self._group_name, dtype=np.uint8, shape=(n, m),
+                    GROUP_KEY, dtype=np.uint8, shape=(n, m),
                     compression=self.compression)
                 print('Saving data to %s' % self.path)
                 for i, val in enumerate(values):
@@ -342,6 +389,15 @@ class PaddedHdf5Manager(Hdf5Manager):
 
 
 class ConcatenatedHdf5Manager(Hdf5Manager):
+    """
+    Saves data in a single list.
+
+    This removes the necessity to store additional zero padding, but requires
+    the start/end points of each entry to be stored separately for constant
+    time access.
+
+    Not great.
+    """
     @property
     def shape_key(self):
         return 'cat'
@@ -358,7 +414,7 @@ class ConcatenatedHdf5Manager(Hdf5Manager):
                 if src.has_dataset():
                     return src
 
-        return super(PaddedHdf5Manager, self).get_default_src()
+        return super(ConcatenatedHdf5Manager, self).get_default_src()
 
     def create_from(self, src=None, overwrite=False):
         import h5py
@@ -409,7 +465,7 @@ class ConcatenatedHdf5Manager(Hdf5Manager):
             lambda x: decode(np.array(x), dims))
 
         if id_keys:
-            dataset = _map_indices_to_ids(dataset, self.cat_i)
+            dataset = _map_indices_to_ids(dataset, self.cat_id)
         return dataset
 
 

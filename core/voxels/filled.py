@@ -7,57 +7,11 @@ from .config import VoxelConfig
 from util3d.voxel.binvox import DenseVoxels
 from util3d.voxel.manip import OrthographicFiller
 
-# import numpy as np
-# _structure = np.zeros((3, 3, 3), dtype=np.bool)
-# _structure[1, 1, 1:1] = 1
-# _structure[1, 1:1, 1] = 1
-# _structure[1:1, 1, 1] = 1
-
 
 def filled_voxels(voxels_dense):
     from scipy.ndimage.morphology import binary_fill_holes
     _structure = None
     return binary_fill_holes(voxels_dense, _structure)
-
-
-# class DummyContextWrapper(object):
-#     def __init__(self, base):
-#         self._base = base
-#
-#     def __enter__(self):
-#         return self._base
-#
-#     def __exit__(self, *args, **kwargs):
-#         pass
-
-
-# class OrthographicFillerFn(object):
-#     def __init__(self, dims):
-#         self._dims = dims
-#
-#     def __enter__(self):
-#         self.open()
-#         return self
-#
-#     def __exit__(self, *args, **kwargs):
-#         self.exit()
-#
-#     def open(self):
-#         import tensorflow as tf
-#         from util3d.voxel.manip_tf import orthographic_filled_voxels
-#         graph = tf.Graph()
-#         with graph.as_default():
-#             self._vox = tf.placeholder(shape=self._dims, dtype=tf.bool)
-#             self._out = orthographic_filled_voxels(self._vox)
-#
-#         self._sess = tf.Session(graph=graph)
-#
-#     def close(self):
-#         self._sess.close()
-#         self._sess = None
-#
-#     def __call__(self, values):
-#         return self._sess.run(self._out, feed_dict={self._vox: values})
 
 
 class FillAlg(object):
@@ -68,18 +22,8 @@ class FillAlg(object):
     ORTHOGRAPHIC = 'orthographic'
 
 
-# def get_orthographic_filler(dims):
-#     try:
-#         return OrthographicFillerFn(dims)
-#     except ImportError:
-#         from util3d.voxel.manip import OrthographicFiller
-#         print('Error importing tensorflow - using numpy implementation')
-#         return OrthographicFiller(dims)
-
-
 _fill_fns = {
     FillAlg.BASE: lambda dims: filled_voxels,
-    # FillAlg.ORTHOGRAPHIC: get_orthographic_filler,
     FillAlg.ORTHOGRAPHIC: OrthographicFiller,
 }
 
@@ -93,11 +37,8 @@ def check_valid_fill_alg(fill_alg):
 
 
 class FilledVoxelConfig(VoxelConfig):
-    def __init__(self, base_config, fill_alg=None):
-        if fill_alg is None:
-            fill_alg = FillAlg.BASE
-        else:
-            check_valid_fill_alg(fill_alg)
+    def __init__(self, base_config, fill_alg=FillAlg.BASE):
+        check_valid_fill_alg(fill_alg)
         self._fill_alg = fill_alg
         self._fill_fn = _fill_fns[fill_alg]
         self._base_config = base_config

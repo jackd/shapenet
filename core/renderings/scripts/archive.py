@@ -6,7 +6,7 @@ from __future__ import print_function
 from absl import flags, app
 FLAGS = flags.FLAGS
 
-flags.DEFINE_integer('dim', default=256, help='dimension of square renderings')
+flags.DEFINE_integer('dim', default=128, help='dimension of square renderings')
 flags.DEFINE_bool('turntable', default=False, help='if True, renderings')
 flags.DEFINE_integer('n_renderings', default=24, help='number of renderings')
 flags.DEFINE_string('path', default=None, help='(optional) path to save')
@@ -15,7 +15,7 @@ flags.DEFINE_list(
 flags.DEFINE_boolean(
     'full', default=False, help='compress all images (True), or just base')
 flags.DEFINE_string(
-    'format', default='tar', help='compression format, one of ["zip", "tar"]')
+    'format', default='zip', help='compression format, one of ["zip", "tar"]')
 flags.DEFINE_boolean('check', default=False, help='If True, just runs a check')
 
 
@@ -25,7 +25,7 @@ def main(_):
 
     rend_manager = get_base_manager(
         dim=FLAGS.dim, turntable=FLAGS.turntable,
-        n_renderings=FLAGS.n_renderings)
+        n_views=FLAGS.n_renderings)
     if FLAGS.cat is None:
         from shapenet.r2n2 import get_cat_ids
         cats = get_cat_ids()

@@ -7,4 +7,4 @@ Download and loading functions for data from [R2N2](https://github.com/chrischoy
 * [Renderings](ftp://cs.stanford.edu/cs/cvgl/ShapeNetRendering.tgz)
 * [Voxels](ftp://cs.stanford.edu/cs/cvgl/ShapeNetVox32.tgz)
 
-These should be downloaded/linked to `_data/ShapeNetRendering.tgz` and `_data/ShapeNetVox32.tgz` respectively
+These should be downloaded/linked to `DATA/r2n2/ShapeNetRendering.tgz` and `DATA/r2n2/ShapeNetVox32.tgz` respectively, where `DATA` is `saved_data_dir` defined in `shapenet/config.yaml`.

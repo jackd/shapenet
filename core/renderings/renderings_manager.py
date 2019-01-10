@@ -2,14 +2,20 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import yaml
 import json
 import os
 import numpy as np
 from ..fixed_objs import is_fixed_obj, get_fixed_obj_path
-from .. import get_example_ids
+from .path import get_renderings_subdir
 
-_root_dir = os.path.realpath(os.path.dirname(__file__))
-renderings_dir = os.path.join(_root_dir, '_renderings')
+
+def _get_core_renderings_dir():
+    from ..path import get_data_dir
+    return get_data_dir('renderings')
+
+
+renderings_dir = _get_core_renderings_dir()
 
 
 def get_default_manager_dir(manager_id):
@@ -22,72 +28,58 @@ def has_renderings(folder, n_renderings, files_per_rendering=4):
 
 
 class RenderingsManager(object):
-    def get_image(self, key, view_index, suffix=None):
-        raise NotImplementedError('Abstract method')
+    @property
+    def view_manager(self):
+        raise NotImplementedError('Abstract property')
 
-    def get_camera_positions(self, key):
-        raise NotImplementedError('Abstract method')
-
-    def keys(self):
+    def get_image(self, cat_id, example_id, view_index):
         raise NotImplementedError('Abstract method')
 
 
 class RenderableManager(RenderingsManager):
-    def get_obj_path(self, key):
+    def get_obj_path(self, cat_id, example_id):
         raise NotImplementedError('Abstract method')
 
-    def get_rendering_path(self, key, view_index, suffix=None):
+    def get_rendering_path(self, cat_id, example_id, view_index):
         raise NotImplementedError('Abstract method')
 
-    def get_render_params(self):
+    def get_view_params(self):
         raise NotImplementedError('Abstract method')
 
-    def needs_rendering_keys():
+    def get_image_params(self):
         raise NotImplementedError('Abstract method')
 
-    def get_image(self, key, view_index, suffix=None):
+    def needs_rendering_keys(self):
+        raise NotImplementedError('Abstract method')
+
+    def get_image(self, cat_id, example_id, view_index):
         from PIL import Image
-        return Image.open(self.get_rendering_path(key, view_index, suffix))
-
-
-def _get_render_params(**kwargs):
-    default_params = dict(
-        depth_scale=1.4,
-        scale=1,
-        shape=[128, 128],
-        edge_split=False,
-        remove_doubles=False,
-        n_renderings=24,
-    )
-    for k, v in kwargs.items():
-        if k in default_params:
-            default_params[k] = v
-        else:
-            raise KeyError('Invalid key "%s"' % k)
-    default_params['shape'] = tuple(default_params['shape'])
-    return default_params
+        return Image.open(
+            self.get_rendering_path(cat_id, example_id, view_index))
 
 
 class RenderableManagerBase(RenderableManager):
-    def __init__(self, root_dir, cat_ids=None):
+    def __init__(self, root_dir, view_manager, image_shape):
         self._root_dir = root_dir
-        self._render_params = None
-        if cat_ids is None:
-            from shapenet.r2n2 import get_cat_ids
-            self._cat_ids = get_cat_ids()
-        else:
-            self._cat_ids = tuple(cat_ids)
+        self._view_manager = view_manager
+        self._view_params = view_manager.get_view_params()
+        self._image_shape = image_shape
+        self._renderings_dir = os.path.join(root_dir, 'renderings')
 
-    def keys(self):
-        for cat_id in self._cat_ids:
-            for example_id in get_example_ids(cat_id):
-                yield (cat_id, example_id)
+    @property
+    def view_manager(self):
+        return self._view_manager
 
-    def needs_rendering_keys(self):
-        n_renderings = self._p['n_renderings']
+    def get_view_params(self):
+        return self._view_params.copy()
+
+    def needs_rendering_keys(self, cat_ids=None):
+        n_views = self.get_view_params()['n_views']
         files_per_rendering = 4
-        return (k for k in self.keys() if not has_renderings(
-            self.get_renderings_dir(k), n_renderings, files_per_rendering))
+        return (
+            k for k in self.view_manager.keys(cat_ids)
+            if not has_renderings(
+                self.get_renderings_dir(*k), n_views, files_per_rendering))
 
     @property
     def root_dir(self):
@@ -97,213 +89,143 @@ class RenderableManagerBase(RenderableManager):
         return os.path.join(self.root_dir, *subpaths)
 
     @property
-    def _render_path(self):
-        return self._path('render_params.json')
+    def _image_params_path(self):
+        return self._path('image_params.yaml')
 
-    def check_render_params(self, **render_params):
-        if self._p != _get_render_params(**render_params):
-            raise IOError(
-                'render_params provided inconsistent with those saved '
-                'to file.')
+    def get_image_params(self):
+        path = self._image_params_path
+        if not os.path.isfile(path):
+            raise IOError('No image_params saved at %s' % path)
+        with open(path, 'r') as fp:
+            return yaml.load(fp)
 
-    def set_render_params(self, **render_params):
-        render_params = _get_render_params(**render_params)
-        root_dir = self.root_dir
-        if not os.path.isdir(root_dir):
-            os.makedirs(root_dir)
+    def set_image_params(self, **image_params):
+        path = self._image_params_path
+        folder = os.path.dirname(path)
+        if not os.path.isdir(folder):
+            os.makedirs(folder)
 
-        path = self._render_path
         if os.path.isfile(path):
-            self.check_render_params(**render_params)
+            self.check_image_params(**image_params)
         else:
             with open(path, 'w') as fp:
-                json.dump(render_params, fp)
+                yaml.dump(image_params, fp, default_flow_style=False)
 
-    def _get_render_params(self):
-        if self._render_params is None:
-            path = self._render_path
-            if not os.path.isfile(path):
-                raise IOError('No params at %s' % path)
-            with open(path, 'r') as fp:
-                params = json.load(fp)
-                self._render_params = {
-                    k: tuple(v) if isinstance(v, list) else v
-                    for k, v in params.items()}
-        return self._render_params
-
-    @property
-    def _p(self):
-        return self._get_render_params()
-
-    def get_render_params(self):
-        return self._p.copy()
-
-    def _get_camera_positions_path(self, key):
-        cat_id, example_id = key
-        return self._path('camera_positions', cat_id, '%s.txt' % example_id)
-
-    def _fix_camera_positions(self, key):
-        import shutil
-        cat_id, example_id = key
-        old_path = self._path(
-            cat_id, 'camera_positions', '%s.txt' % example_id)
-        if os.path.isfile(old_path):
-            new_path = self._path(
-                'camera_positions', cat_id, '%s.txt' % example_id)
-            assert(not os.path.isfile(new_path))
-            dn = os.path.dirname(new_path)
-            if not os.path.isdir(dn):
-                os.makedirs(dn)
-            shutil.move(old_path, new_path)
-
-    def _fix_renderings(self, key):
-        import shutil
-        cat_id, example_id = key
-        old_dir = self._path(cat_id, 'renderings', example_id)
-        if os.path.isdir(old_dir):
-            new_dir = self._path('renderings', cat_id, example_id)
-            assert(not os.path.isdir(new_dir))
-            shutil.move(old_dir, new_dir)
-
-    def fix_all(self):
-        for k in self.keys():
-            self._fix_camera_positions(k)
-            self._fix_renderings(k)
-
-    def get_camera_positions(self, key):
-        path = self._get_camera_positions_path(key)
-        if os.path.isfile(path):
-            with open(path, 'r') as fp:
-                out = [
-                    [float(x) for x in line.rstrip().split(' ')]
-                    for line in fp.readlines()]
-        else:
-            raise IOError('No camera positions at %s' % path)
-        return out
-
-    def set_camera_positions(self, key, camera_positions):
-        path = self._get_camera_positions_path(key)
-        if os.path.isfile(path):
+    def check_image_params(self, **image_params):
+        saved = self.get_image_params()
+        if saved != image_params:
             raise ValueError(
-                'Cannot set camera positions: file already exists at %s'
-                % path)
-        camera_positions = np.array(camera_positions, copy=False)
-        if camera_positions.shape[1:] != (3,):
-            raise ValueError('camera_positions must be (N, 3)')
-        dir = os.path.dirname(path)
-        if not os.path.isdir(dir):
-            os.makedirs(dir)
-        np.savetxt(path, camera_positions)
+                'image_params not consistent with saved image_params\n'
+                'saved_image_params:\n'
+                '%s\n'
+                'passed image_params:\n'
+                '%s\n' % (saved, image_params))
 
-    def get_obj_path(self, key):
+    def get_obj_path(self, cat_id, example_id):
         from shapenet.core.path import get_extracted_core_dir
-        cat_id, example_id = key
         if is_fixed_obj(cat_id, example_id):
             return get_fixed_obj_path(cat_id, example_id)
         else:
             return os.path.join(
                 get_extracted_core_dir(), cat_id, example_id, 'model.obj')
 
-    def get_renderings_dir(self, key):
-        cat_id, example_id = key
-        return self._path('renderings', cat_id, example_id)
+    def get_renderings_dir(self, cat_id, example_id):
+        return os.path.join(
+            self._renderings_dir, get_renderings_subdir(cat_id, example_id))
+
+    def get_rendering_path(self, cat_id, example_id, view_index):
+        from . import path
+        subpath = path.get_rendering_subpath(cat_id, example_id, view_index)
+        return os.path.join(self._renderings_dir, subpath)
 
     def get_cat_dir(self, cat_id):
-        return self._path('renderings', cat_id)
-
-    def get_rendering_path(self, key, view_index, suffix=None):
-        fn = self.get_rendering_filename(view_index, suffix)
-        return os.path.join(self.get_renderings_dir(key), fn)
-
-    def get_rendering_filename(self, view_index, suffix=None):
-        return ('r%03d.png' % view_index) if suffix is None else \
-                'r%03d_%s.png' % (view_index, suffix)
-
-    def get_rendering_subpath(self, key, view_index, suffix=None):
-        cat_id, example_id = key
         return os.path.join(
-            cat_id, example_id,
-            self.get_rendering_filename(view_index, suffix))
+            self._renderings_dir, get_renderings_subdir(cat_id))
 
     def render_all(
-            self, verbose=True, batch_size=1, blender_path='blender'):
+            self, cat_ids=None, verbose=True, blender_path='blender'):
         import subprocess
         from progress.bar import IncrementalBar
+        import tempfile
+        from .path import renderings_format
+        from ..objs import try_extract_models
+        for cat_id in cat_ids:
+            try_extract_models(cat_id)
         _FNULL = open(os.devnull, 'w')
         call_kwargs = dict()
         if not verbose:
             call_kwargs['stdout'] = _FNULL
             call_kwargs['stderr'] = subprocess.STDOUT
 
-        script_path = os.path.join(_root_dir, 'scripts', 'blender_render.py')
-        args = [
-            blender_path, '--background',
-            '--python', script_path, '--',
-            '--manager_dir', self.root_dir]
+        root_dir = os.path.realpath(os.path.dirname(__file__))
+        script_path = os.path.join(root_dir, 'scripts', 'blender_render.py')
 
-        keys = tuple(self.needs_rendering_keys())
-        n = len(keys)
-        if n == 0:
-            print('No keys to render.')
-            return
-        print('Rendering %d examples' % n)
-        bar = IncrementalBar(max=n)
-        for key in keys:
-            cat_id, example_id = key
-            bar.next()
-            proc = subprocess.Popen(
-                args + ['--cat_id', cat_id, '--example_ids', example_id],
-                **call_kwargs)
-            try:
-                proc.wait()
-            except KeyboardInterrupt:
-                proc.kill()
-                raise
+        render_params_path = None
+        camera_positions_path = None
 
-        bar.finish()
+        def clean_up():
+            for path in (render_params_path, camera_positions_path):
+                if path is not None and os.path.isfile(path):
+                    os.remove(path)
+
+        render_params_fp, render_params_path = tempfile.mkstemp(suffix='.json')
+        try:
+            view_params = self.get_view_params()
+            view_params.update(**self.get_image_params())
+            os.write(render_params_fp, json.dumps(view_params))
+            os.close(render_params_fp)
+
+            args = [
+                blender_path, '--background',
+                '--python', script_path, '--',
+                '--render_params', render_params_path]
+
+            keys = tuple(self.needs_rendering_keys(cat_ids))
+            n = len(keys)
+            if n == 0:
+                print('No keys to render.')
+                return
+            print('Rendering %d examples' % n)
+            bar = IncrementalBar(max=n)
+            for cat_id, example_id in keys:
+                bar.next()
+
+                camera_positions_fp, camera_positions_path = tempfile.mkstemp(
+                    suffix='.npy')
+                os.close(camera_positions_fp)
+                np.save(
+                    camera_positions_path,
+                    self.view_manager.get_camera_positions(cat_id, example_id))
+
+                out_dir = self.get_renderings_dir(cat_id, example_id)
+                proc = subprocess.Popen(
+                    args + [
+                        '--obj', self.get_obj_path(cat_id, example_id),
+                        '--out_dir', out_dir,
+                        '--filename_format', renderings_format,
+                        '--camera_positions', camera_positions_path,
+                        ],
+                    **call_kwargs)
+                try:
+                    proc.wait()
+                except KeyboardInterrupt:
+                    proc.kill()
+                    raise
+                if os.path.isfile(camera_positions_path):
+                    os.remove(camera_positions_path)
+            bar.finish()
+        except (Exception, KeyboardInterrupt):
+            clean_up()
+            raise
+        clean_up()
 
 
-def get_base_manager(dim=128, turntable=False, n_renderings=24, cat_ids=None):
-    manager_id = '%s-%03d-%03d' % (
-        'turntable' if turntable else 'rand', dim, n_renderings)
+def get_base_manager(turntable=False, n_views=24, format='h5', dim=128):
+    from ..views.base import get_base_manager, get_base_id
+    kwargs = dict(turntable=turntable, n_views=n_views)
+    manager_id = '%s-%03d' % (get_base_id(**kwargs), dim)
     manager = RenderableManagerBase(
-        get_default_manager_dir(manager_id), cat_ids=cat_ids)
-    manager.set_render_params(n_renderings=n_renderings, shape=(dim,)*2)
+        get_default_manager_dir(manager_id), get_base_manager(**kwargs),
+        (dim,)*2)
+    manager.set_image_params(shape=(dim,)*2)
     return manager
-
-
-def create_base_manager(dim=128, turntable=False, n_renderings=24):
-    from progress.bar import IncrementalBar
-    from shapenet.r2n2 import get_cat_ids
-    manager = get_base_manager(
-        dim=dim, turntable=turntable, n_renderings=n_renderings,
-        cat_ids=get_cat_ids())
-    dist = 1.166  # sqrt(1 + 0.6**2) - looked good in experiments
-
-    def polar_to_cartesian(dist, theta, phi):
-        z = np.cos(phi)
-        s = np.sin(phi)
-        x = s * np.cos(theta)
-        y = s * np.sin(theta)
-        return np.stack((x, y, z), axis=-1) * dist
-
-    if turntable:
-        def get_camera_pos():
-            theta = np.deg2rad(np.linspace(0, 360, n_renderings+1)[:-1])
-            phi = np.deg2rad(60.0) * np.ones_like(theta)
-            return polar_to_cartesian(dist, theta, phi).astype(np.float32)
-    else:
-        def get_camera_pos():
-            size = (n_renderings,)
-            theta = np.deg2rad(np.random.uniform(0, 360, size=size))
-            phi = np.deg2rad(90 - np.random.uniform(25, 30, size=size))
-            return polar_to_cartesian(dist, theta, phi).astype(np.float32)
-
-    keys = manager.keys()
-    print('Creating random r2n2 renderings manager')
-    bar = IncrementalBar(max=len(keys))
-
-    for key in keys:
-        manager.set_camera_positions(key, get_camera_pos())
-        bar.next()
-    bar.finish()

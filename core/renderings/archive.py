@@ -28,6 +28,9 @@ class Archive(object):
     def close(self):
         raise NotImplementedError('Abstract method')
 
+    def extractall(self, path=None):
+        raise NotImplementedError('Abstract method')
+
 
 class ArchiveBase(Archive):
     def __init__(self, path, mode):
@@ -70,6 +73,9 @@ class ZipArchive(ArchiveBase):
     def get_names(self):
         return self._file.namelist()
 
+    def extractall(self, path='.'):
+        return self._file.extractall(path=path)
+
 
 class TarArchive(ArchiveBase):
     def get_open_file(self):
@@ -80,6 +86,9 @@ class TarArchive(ArchiveBase):
 
     def get_names(self):
         return self._file.getnames()
+
+    def extractall(self, path='.'):
+        return self._file.extractall(path)
 
 
 def get_archive(path, mode='r'):
