@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import six
 from .. import path
 
 data_dir = path.get_data_dir('r2n2')
@@ -27,7 +28,7 @@ def get_renderings_subpath(cat_id=None, example_id=None, data_id=None):
                 args.append('rendering')
                 if isinstance(data_id, int):
                     args.append('%02d.png' % data_id)
-                elif isinstance(data_id, (str, unicode)):
+                elif isinstance(data_id, six.string_types):
                     args.append(data_id)
                 else:
                     raise ValueError('Unrecognized data_id `%s`' % data_id)

@@ -151,3 +151,14 @@ def get_cloud_normal_dataset(cat_id, n_samples, example_ids=None, mode='r'):
         c: _get_cloud_normal_dataset(c, n_samples, e, mode)
         for c, e in zip(cat_id, example_ids)}
     return BiKeyDataset(datasets)
+
+
+def generate_point_cloud_data(
+        cat_id, n_samples, normals=False, example_ids=None, overwrite=False):
+    if normals:
+        CloudNormalAutoSavingManager(
+            cat_id, n_samples, example_ids).save_all(overwrite=overwrite)
+        get_cloud_normal_dataset(cat_id, n_samples)
+    else:
+        PointCloudAutoSavingManager(
+            cat_id, n_samples, example_ids).save_all(overwrite=overwrite)

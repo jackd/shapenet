@@ -6,6 +6,7 @@ import functools
 import os
 import shutil
 import numpy as np
+import six
 from util3d.voxel import binvox as bv
 from shapenet.core import get_example_ids
 
@@ -174,7 +175,7 @@ class ZippedBinvoxManager(DatasetManager):
 class Hdf5Manager(DatasetManager):
     def __init__(self, config, cat_id, encoder, compression='gzip'):
         super(Hdf5Manager, self).__init__(config, cat_id)
-        if isinstance(compression, (str, unicode)):
+        if isinstance(compression, six.string_types):
             compression = compression.lower()
             if compression == 'none' or compression == 'raw':
                 compression = None
@@ -526,7 +527,7 @@ _encoders = {
 def as_encoder(encoder):
     if isinstance(encoder, Encoder):
         return encoder
-    elif isinstance(encoder, (str, unicode)):
+    elif isinstance(encoder, six.string_types):
         return _encoders[encoder]()
     else:
         raise ValueError('Unrecognized encoder %s' % str(encoder))

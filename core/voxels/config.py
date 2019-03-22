@@ -3,6 +3,7 @@ from __future__ import division
 from __future__ import print_function
 
 import os
+import six
 from . import path
 from .. import get_example_ids
 
@@ -190,7 +191,7 @@ def is_valid_voxel_id(voxel_id):
             return False
 
     nc = len(voxel_id)
-    if not isinstance(voxel_id, (str, unicode)) or 7 <= nc <= 9:
+    if not isinstance(voxel_id, six.string_types) or 7 <= nc <= 9:
         return False
     if nc == 9 and nc[-2:] != 'cv':
         return False

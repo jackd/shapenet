@@ -1,8 +1,9 @@
 import os
 import dids.file_io.hdf5 as dh
+from ..path import get_data_dir
 
-_meshes_dir = os.path.join(
-    os.path.realpath(os.path.dirname(__file__)), '_meshes')
+
+_meshes_dir = get_data_dir('meshes')
 
 
 class _MeshAutoSavingManager(dh.Hdf5AutoSavingManager):
