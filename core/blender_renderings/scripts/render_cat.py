@@ -10,7 +10,6 @@ import shutil
 import subprocess
 import tempfile
 from datetime import datetime
-from shapenet.path import get_temp_dir
 from shapenet.core import get_example_ids, cat_desc_to_id
 from shapenet.core.path import get_zip_path, get_example_subdir, \
     get_obj_subpath
