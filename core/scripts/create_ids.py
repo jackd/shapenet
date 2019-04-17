@@ -3,9 +3,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
 from progress.bar import IncrementalBar
-from shapenet.core.path import get_ids_path
 from shapenet.core.path import get_cat_ids
 from shapenet.core.path import get_example_ids_from_zip
 from shapenet.core.path import get_example_ids
