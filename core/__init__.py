@@ -2,6 +2,8 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import os
+import six
 from . import path
 
 _cat_descs = {
@@ -130,7 +132,10 @@ def to_cat_id(cat):
 
 def get_example_ids(cat_id, include_bad=False):
     from .path import get_ids_path
-    with open(get_ids_path(cat_id), 'r') as fp:
+    ids_path = get_ids_path(cat_id)
+    if not os.path.isfile(ids_path):
+        create_ids(cat_id)
+    with open(ids_path, 'r') as fp:
         ids = fp.readlines()
     ids = [id.rstrip() for id in ids]
     ids.sort()
@@ -147,6 +152,24 @@ def get_old_example_ids(cat_id):
         ids = fp.readlines()
     ids = [id.rstrip() for id in ids]
     return ids
+
+
+def create_ids(cat_ids):
+    from progress.bar import IncrementalBar
+    if isinstance(cat_ids, six.string_types):
+        cat_ids = [cat_ids]
+    bar = IncrementalBar(max=len(cat_ids))
+    for cat_id in cat_ids:
+        ids_path = path.get_ids_path(cat_id)
+        d = os.path.dirname(ids_path)
+        if not os.path.isdir(d):
+            os.makedirs(d)
+        example_ids = path.get_example_ids_from_zip(cat_id)
+        with open(ids_path, 'w') as fp:
+            fp.writelines(
+                ('%s\n' % example_id for example_id in example_ids))
+        bar.next()
+    bar.finish()
 
 
 # __all__ = [
