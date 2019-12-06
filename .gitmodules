@@ -1,0 +1,6 @@
+[submodule "dids"]
+	path = dids
+	url = https://github.com/jackd/dids.git
+[submodule "util3d"]
+	path = util3d
+	url = https://github.com/jackd/util3d.git
