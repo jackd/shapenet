@@ -1,0 +1,5 @@
+core_dir:             /data/ShapeNetCore.v1                                      # directory containing CAT_ID.zip, CAT_ID.csv, taxonomy.json
+iccv17_dir:           /data/shapenet2017                                         # directory containing (train)|(test)|(val)_(imgs)|(voxels).zip
+core_annotations_dir: /data/shapenet_annotations                                 # directory containing shapenetcore_partanno_segmentation_benchmark_v0.zip and shapenetcore_partanno_v0.zip
+created_data_dir:     ./data                                                     # directory into data created by this repo saves data
+voxel_compression:    lzf
